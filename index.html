@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>STL · 석고 반죽량 계산</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -170,9 +170,32 @@
   </div>
   </div>
 
+  <button type="button" id="scroll-top-btn" class="scroll-top-btn" aria-label="페이지 맨 위로" title="맨 위로">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
+  </button>
+
   <div id="record-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="record-modal-title" hidden>
     <div class="modal-dialog">
-      <h2 id="record-modal-title" class="modal-title">저장</h2>
+      <div class="modal-header-bar">
+        <h2 id="record-modal-title" class="modal-title">저장</h2>
+        <div class="modal-header-actions">
+          <button type="button" id="modal-btn-primary" class="modal-btn modal-btn-primary modal-btn-header">저장 완료</button>
+          <button type="button" id="modal-btn-cancel" class="modal-btn modal-btn-secondary modal-btn-header">닫기</button>
+        </div>
+      </div>
+      <div class="modal-scroll">
+      <div id="modal-save-preview-wrap" class="modal-save-preview-wrap">
+        <span class="modal-preview-section-label">썸네일 미리보기</span>
+        <div id="modal-preview-canvas-host" class="modal-preview-canvas-host" aria-label="저장용 3D 미리보기"></div>
+        <p id="modal-save-preview-hint" class="modal-save-preview-hint"></p>
+      </div>
+      <div id="modal-edit-thumb-wrap" class="modal-edit-thumb-wrap" hidden>
+        <span class="modal-preview-section-label">미리보기</span>
+        <div class="modal-edit-thumb-inner">
+          <img id="modal-edit-thumb-img" class="modal-edit-thumb-img" alt="" width="200" height="200" loading="lazy" hidden />
+          <div id="modal-edit-thumb-empty" class="modal-edit-thumb-empty">등록된 미리보기 이미지가 없습니다.</div>
+        </div>
+      </div>
       <div class="modal-fields">
         <label class="modal-field">
           <span class="modal-label">이름</span>
@@ -198,9 +221,6 @@
           <textarea id="modal-field-memo" class="modal-textarea" rows="3" maxlength="500"></textarea>
         </label>
       </div>
-      <div class="modal-actions">
-        <button type="button" id="modal-btn-primary" class="modal-btn modal-btn-primary">저장 완료</button>
-        <button type="button" id="modal-btn-cancel" class="modal-btn modal-btn-secondary">취소</button>
       </div>
     </div>
   </div>
@@ -457,29 +477,27 @@
 
       const thumb = r.thumbnail || "";
       const thumbHtml = thumb
-        ? `<img src="${thumb.replace(/"/g, "&quot;")}" alt="" width="80" height="80" loading="lazy" />`
+        ? `<img src="${thumb.replace(/"/g, "&quot;")}" alt="" width="200" height="200" loading="lazy" />`
         : `<div class="record-card-thumb-fallback">미리보기 없음</div>`;
 
       return `<article class="record-card" data-id="${r.id}">
+        <header class="record-card-head">
+          <h3 class="record-card-title">${nameHtml}</h3>
+          <span class="record-card-date">${dateHtml}</span>
+        </header>
         <div class="record-card-thumb">${thumbHtml}</div>
-        <div class="record-card-main">
-          <div class="record-card-topline">
-            <span class="record-card-date">${dateHtml}</span>
-          </div>
-          <div class="record-card-title">${nameHtml}</div>
-          <div class="record-card-metrics" role="group" aria-label="석고·물량">
-            <span class="record-metric-inline">
-              <span class="record-metric-label">석고</span>
-              <span class="record-metric-value">${plasterHtml}<span class="record-metric-unit"> g</span></span>
-            </span>
-            <span class="record-metric-sep" aria-hidden="true"></span>
-            <span class="record-metric-inline">
-              <span class="record-metric-label">물</span>
-              <span class="record-metric-value">${waterHtml}<span class="record-metric-unit"> mL</span></span>
-            </span>
-          </div>
-          <p class="record-card-memo">${memoHtml}</p>
+        <div class="record-card-metrics" role="group" aria-label="석고·물량">
+          <span class="record-metric-inline">
+            <span class="record-metric-label">석고</span>
+            <span class="record-metric-value">${plasterHtml}<span class="record-metric-unit"> g</span></span>
+          </span>
+          <span class="record-metric-sep" aria-hidden="true"></span>
+          <span class="record-metric-inline">
+            <span class="record-metric-label">물</span>
+            <span class="record-metric-value">${waterHtml}<span class="record-metric-unit"> mL</span></span>
+          </span>
         </div>
+        <p class="record-card-memo">${memoHtml}</p>
         <div class="record-card-actions">
           <button type="button" class="btn-record-edit">수정</button>
           <button type="button" class="btn-record-delete">삭제</button>
@@ -657,6 +675,292 @@
       cam.updateProjectionMatrix();
       r.render(slot.scene, cam);
       return dataUrl;
+    }
+
+    let modalPreview = null;
+
+    function capturePreviewAsDataURL(preview, size = 200) {
+      if (!preview?.renderer || !preview?.camera || !preview?.scene || !preview?.mesh) {
+        return makePlaceholderThumbnail();
+      }
+      const r = preview.renderer;
+      const cam = preview.camera;
+      const host = preview.host;
+      const w0 = Math.max(host.clientWidth, 2);
+      const h0 = Math.max(host.clientHeight, 2);
+      const pr = r.getPixelRatio();
+      const SIZE = size;
+
+      r.setPixelRatio(1);
+      r.setSize(SIZE, SIZE);
+      cam.aspect = 1;
+      cam.updateProjectionMatrix();
+      r.render(preview.scene, cam);
+      const dataUrl = r.domElement.toDataURL("image/png");
+
+      r.setPixelRatio(pr);
+      r.setSize(w0, h0);
+      cam.aspect = w0 / h0;
+      cam.updateProjectionMatrix();
+      r.render(preview.scene, cam);
+      return dataUrl;
+    }
+
+    function unbindPreviewOrbitControls(p) {
+      (p._orbitCleanups || []).forEach(fn => {
+        try { fn(); } catch (_) { /* noop */ }
+      });
+      p._orbitCleanups = [];
+    }
+
+    function bindPreviewOrbitControls(p) {
+      const el = p.renderer.domElement;
+      let dragging = false;
+      let lastX = 0;
+      let lastY = 0;
+      const SPEED = 0.008;
+      const cleanups = [];
+      const add = (node, ev, fn, opts) => {
+        node.addEventListener(ev, fn, opts);
+        cleanups.push(() => node.removeEventListener(ev, fn, opts));
+      };
+
+      function applyDelta(dx, dy) {
+        if (!p.mesh) return;
+        const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), dx * SPEED);
+        const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), dy * SPEED);
+        p.mesh.quaternion.premultiply(qY).premultiply(qX);
+      }
+
+      function applyZoom(factor) {
+        const minDist = 0.5;
+        const maxDist = 10000;
+        const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(p.camera.quaternion);
+        const dist = p.camera.position.distanceTo(new THREE.Vector3(0, 0, 0));
+        const step = dist * (1 - factor);
+        p.camera.position.addScaledVector(dir, step);
+        const newDist = p.camera.position.length();
+        if (newDist < minDist) p.camera.position.setLength(minDist);
+        if (newDist > maxDist) p.camera.position.setLength(maxDist);
+      }
+
+      add(el, "mousedown", e => {
+        if (e.button !== 0) return;
+        dragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        el.style.cursor = "grabbing";
+      });
+      add(window, "mousemove", e => {
+        if (!dragging) return;
+        applyDelta(e.clientX - lastX, e.clientY - lastY);
+        lastX = e.clientX;
+        lastY = e.clientY;
+      });
+      add(window, "mouseup", () => {
+        dragging = false;
+        el.style.cursor = "grab";
+      });
+      el.style.cursor = "grab";
+
+      add(el, "wheel", e => {
+        e.preventDefault();
+        applyZoom(e.deltaY > 0 ? 1.12 : 1 / 1.12);
+      }, { passive: false });
+
+      let lastTouchX = 0;
+      let lastTouchY = 0;
+      let lastPinchDist = 0;
+      add(el, "touchstart", e => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+          lastTouchX = e.touches[0].clientX;
+          lastTouchY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          lastPinchDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+      }, { passive: false });
+      add(el, "touchmove", e => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+          applyDelta(e.touches[0].clientX - lastTouchX, e.touches[0].clientY - lastTouchY);
+          lastTouchX = e.touches[0].clientX;
+          lastTouchY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          if (lastPinchDist > 0) applyZoom(lastPinchDist / dist);
+          lastPinchDist = dist;
+        }
+      }, { passive: false });
+      add(el, "touchend", () => {
+        lastPinchDist = 0;
+      }, { passive: true });
+
+      p._orbitCleanups = cleanups;
+    }
+
+    function loopModalPreview() {
+      if (!modalPreview?.renderer) return;
+      modalPreview._raf = requestAnimationFrame(loopModalPreview);
+      modalPreview.renderer.render(modalPreview.scene, modalPreview.camera);
+    }
+
+    function disposeModalPreview() {
+      if (!modalPreview) return;
+      if (modalPreview._raf) cancelAnimationFrame(modalPreview._raf);
+      modalPreview._raf = null;
+      if (modalPreview._resizeObs) {
+        modalPreview._resizeObs.disconnect();
+        modalPreview._resizeObs = null;
+      }
+      unbindPreviewOrbitControls(modalPreview);
+      if (modalPreview.mesh) {
+        modalPreview.scene.remove(modalPreview.mesh);
+        modalPreview.mesh.geometry?.dispose();
+        modalPreview.mesh.material?.dispose();
+        modalPreview.mesh = null;
+      }
+      if (modalPreview.renderer) {
+        modalPreview.renderer.dispose();
+        const cel = modalPreview.renderer.domElement;
+        if (cel?.parentNode) cel.parentNode.removeChild(cel);
+        modalPreview.renderer = null;
+      }
+      modalPreview.scene = null;
+      modalPreview.camera = null;
+      modalPreview = null;
+    }
+
+    function syncSaveModalPreviewUI(hasModel) {
+      const hint = document.getElementById("modal-save-preview-hint");
+      const host = document.getElementById("modal-preview-canvas-host");
+      if (!host) return;
+      if (hasModel) {
+        host.hidden = false;
+        if (hint) {
+          hint.hidden = false;
+          hint.textContent =
+            "여기서 각도를 맞춘 뒤 저장하면 됩니다요~";
+        }
+      } else {
+        host.hidden = true;
+        if (hint) {
+          hint.hidden = false;
+          hint.textContent =
+            "불러온 STL이 없어 체적만 저장됩니다. 썸네일은 기본 이미지로 저장됩니다.";
+        }
+      }
+    }
+
+    function setupModalPreviewForSave() {
+      disposeModalPreview();
+      const host = document.getElementById("modal-preview-canvas-host");
+      const slot = viewerSlots.find(s => s.mesh && s.geometry);
+      if (!host) return;
+
+      if (!slot) {
+        syncSaveModalPreviewUI(false);
+        return;
+      }
+
+      syncSaveModalPreviewUI(true);
+      host.innerHTML = "";
+
+      const w = Math.max(host.clientWidth, 200);
+      const h = Math.max(host.clientHeight, 168);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xf0f4ff);
+      const camera = new THREE.PerspectiveCamera(45, w / h, slot.camera.near, slot.camera.far);
+      camera.position.copy(slot.camera.position);
+      camera.quaternion.copy(slot.camera.quaternion);
+      camera.fov = slot.camera.fov;
+      camera.zoom = slot.camera.zoom;
+      camera.near = slot.camera.near;
+      camera.far = slot.camera.far;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      host.appendChild(renderer.domElement);
+
+      const hemi = new THREE.HemisphereLight(0xffffff, 0xdde4f0, 0.25);
+      scene.add(hemi);
+      const dir = new THREE.DirectionalLight(0xffffff, 1.15);
+      const tgt = new THREE.Object3D();
+      tgt.position.set(0, 0, 0);
+      scene.add(tgt);
+      dir.target = tgt;
+      scene.add(dir);
+      dir.position.set(55, 95, 70);
+
+      const geom = slot.mesh.geometry.clone();
+      const mat = slot.mesh.material.clone();
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.quaternion.copy(slot.mesh.quaternion);
+      scene.add(mesh);
+
+      modalPreview = {
+        renderer,
+        scene,
+        camera,
+        mesh,
+        host,
+        _raf: null,
+        _resizeObs: null,
+      };
+
+      bindPreviewOrbitControls(modalPreview);
+      loopModalPreview();
+
+      const ro = new ResizeObserver(() => {
+        if (!modalPreview?.host || !modalPreview.renderer) return;
+        const hw = Math.max(modalPreview.host.clientWidth, 2);
+        const hh = Math.max(modalPreview.host.clientHeight, 2);
+        modalPreview.camera.aspect = hw / hh;
+        modalPreview.camera.updateProjectionMatrix();
+        modalPreview.renderer.setSize(hw, hh);
+      });
+      ro.observe(host);
+      modalPreview._resizeObs = ro;
+    }
+
+    function setupEditModalThumb(record) {
+      disposeModalPreview();
+      const saveWrap = document.getElementById("modal-save-preview-wrap");
+      const editWrap = document.getElementById("modal-edit-thumb-wrap");
+      const img = document.getElementById("modal-edit-thumb-img");
+      const empty = document.getElementById("modal-edit-thumb-empty");
+      if (saveWrap) saveWrap.hidden = true;
+      if (!editWrap || !img || !empty) return;
+      editWrap.hidden = false;
+      const thumb = record.thumbnail || "";
+      if (thumb) {
+        empty.hidden = true;
+        img.hidden = false;
+        img.onload = () => {
+          empty.hidden = true;
+        };
+        img.onerror = () => {
+          img.hidden = true;
+          empty.hidden = false;
+          empty.textContent = "미리보기 이미지를 불러올 수 없습니다.";
+        };
+        img.src = thumb;
+      } else {
+        img.hidden = true;
+        img.removeAttribute("src");
+        empty.hidden = false;
+        empty.textContent = "등록된 미리보기 이미지가 없습니다.";
+      }
     }
 
     function initThreeForSlot(slot) {
@@ -1091,6 +1395,7 @@
     }
 
     function closeRecordModal() {
+      disposeModalPreview();
       const el = document.getElementById("record-modal");
       if (el) {
         el.hidden = true;
@@ -1117,7 +1422,12 @@
       document.getElementById("modal-field-memo").value = "";
       const ratioChk = document.getElementById("modal-ratio-sync");
       if (ratioChk) ratioChk.checked = true;
+      const saveWrap = document.getElementById("modal-save-preview-wrap");
+      const editWrap = document.getElementById("modal-edit-thumb-wrap");
+      if (saveWrap) saveWrap.hidden = false;
+      if (editWrap) editWrap.hidden = true;
       openRecordModal();
+      requestAnimationFrame(() => setupModalPreviewForSave());
       document.getElementById("modal-field-name")?.focus();
     }
 
@@ -1133,6 +1443,7 @@
       const ratioChk = document.getElementById("modal-ratio-sync");
       if (ratioChk) ratioChk.checked = true;
       openRecordModal();
+      setupEditModalThumb(record);
       document.getElementById("modal-field-name")?.focus();
     }
 
@@ -1150,8 +1461,9 @@
     async function commitRecordModal() {
       const fields = readModalFields();
       if (modalMode === "create") {
-        const slot = viewerSlots.find(s => s.mesh && s.renderer);
-        const thumbnail = slot ? captureSlotThumbnail80(slot) : makePlaceholderThumbnail();
+        const thumbnail = modalPreview?.mesh
+          ? capturePreviewAsDataURL(modalPreview, 200)
+          : makePlaceholderThumbnail();
         const id = Date.now();
         const record = {
           id,
@@ -1283,7 +1595,7 @@
       }
       if (panelCalc) panelCalc.hidden = !isCalc;
       if (panelStore) panelStore.hidden = isCalc;
-      if (!isCalc) void renderRecordsList({ forceFetch: true });
+      if (!isCalc) void renderRecordsList({ forceFetch: false });
     }
 
     function updatePlasterCalc() {
@@ -1415,6 +1727,59 @@
     document.getElementById("records-search")?.addEventListener("input", () => void renderRecordsList({ forceFetch: false }));
     document.getElementById("records-sort")?.addEventListener("change", () => void renderRecordsList({ forceFetch: false }));
     void renderRecordsList({ forceFetch: true });
+
+    function setupScrollTopFab() {
+      const btn = document.getElementById("scroll-top-btn");
+      const tabs = document.querySelector(".app-tabs");
+      const modal = document.getElementById("record-modal");
+      const appMain = document.getElementById("app-main");
+      if (!btn || !tabs) return;
+
+      const mq = window.matchMedia("(min-width: 768px)");
+
+      function appMainVisible() {
+        if (!appMain) return false;
+        return window.getComputedStyle(appMain).display !== "none";
+      }
+
+      function tick() {
+        if (!mq.matches || !appMainVisible()) {
+          btn.classList.remove("scroll-top-btn--visible");
+          btn.setAttribute("aria-hidden", "true");
+          btn.tabIndex = -1;
+          return;
+        }
+        if (modal && !modal.hidden) {
+          btn.classList.remove("scroll-top-btn--visible");
+          btn.setAttribute("aria-hidden", "true");
+          btn.tabIndex = -1;
+          return;
+        }
+        const rect = tabs.getBoundingClientRect();
+        const pastTabs = rect.bottom < 8;
+        const show = pastTabs;
+        btn.classList.toggle("scroll-top-btn--visible", show);
+        btn.setAttribute("aria-hidden", show ? "false" : "true");
+        btn.tabIndex = show ? 0 : -1;
+      }
+
+      window.addEventListener("scroll", tick, { passive: true });
+      window.addEventListener("resize", tick, { passive: true });
+      mq.addEventListener("change", tick);
+      if (modal) {
+        const mo = new MutationObserver(tick);
+        mo.observe(modal, { attributes: true, attributeFilter: ["hidden"] });
+      }
+
+      btn.addEventListener("click", () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        btn.blur();
+      });
+
+      tick();
+    }
+
+    setupScrollTopFab();
 
     async function initViewerFromQuery() {
       const params = new URLSearchParams(window.location.search);

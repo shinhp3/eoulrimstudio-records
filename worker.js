@@ -2,7 +2,7 @@ const INDEX_HTML = `<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>STL · 석고 반죽량 계산</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -551,7 +551,7 @@ section.plaster h2::before {
   margin-bottom: 18px;
 }
 
-@media (max-width: 540px) {
+@media (max-width: 767px) {
   .plaster-results {
     grid-template-columns: 1fr;
   }
@@ -731,7 +731,7 @@ section.ratio-calc h2::before {
   align-items: end;
 }
 
-@media (max-width: 620px) {
+@media (max-width: 767px) {
   .ratio-calc-grid {
     grid-template-columns: 1fr;
     gap: 18px;
@@ -972,6 +972,60 @@ html[data-viewer="app"] #screen-error { display: none !important; }
   display: none !important;
 }
 
+.scroll-top-btn {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .scroll-top-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: max(22px, env(safe-area-inset-right, 0px));
+    bottom: max(26px, env(safe-area-inset-bottom, 0px));
+    z-index: 90;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    margin: 0;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.14);
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s;
+  }
+
+  .scroll-top-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .scroll-top-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .scroll-top-btn.scroll-top-btn--visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 767px) {
+  .scroll-top-btn {
+    display: none !important;
+  }
+}
+
 /* ── 저장 행 (석고 섹션) ── */
 .plaster-save-row {
   display: flex;
@@ -1186,18 +1240,19 @@ html[data-viewer="app"] #screen-error { display: none !important; }
 }
 
 .records-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 248px), 1fr));
+  gap: 14px 16px;
+  align-items: stretch;
 }
 
 .record-card {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
+  flex-direction: column;
   align-items: stretch;
-  gap: 0;
-  padding: 16px 18px 18px 16px;
+  height: 100%;
+  min-height: 0;
+  padding: 14px 14px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -1210,45 +1265,34 @@ html[data-viewer="app"] #screen-error { display: none !important; }
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
 }
 
-@media (max-width: 720px) {
-  .record-card {
-    flex-wrap: wrap;
-  }
-
-  .record-card-actions {
-    flex-direction: row !important;
-    justify-content: flex-end !important;
-    width: 100%;
-    border-left: none !important;
-    border-top: 1px solid var(--border);
-    padding: 14px 0 0 !important;
-    margin: 12px 0 0 !important;
-    align-self: stretch !important;
-  }
+.record-card-head {
+  margin: 0 0 10px;
+  min-width: 0;
 }
 
 .record-card-thumb {
   flex-shrink: 0;
-  align-self: flex-start;
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
+  width: min(100%, 118px);
+  aspect-ratio: 1;
+  margin: 0 auto 10px;
+  border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%);
 }
 
 .record-card-thumb img {
-  width: 80px;
-  height: 80px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   display: block;
   vertical-align: top;
 }
 
 .record-card-thumb-fallback {
-  width: 80px;
-  height: 80px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1256,40 +1300,25 @@ html[data-viewer="app"] #screen-error { display: none !important; }
   font-weight: 600;
   color: var(--muted);
   text-align: center;
-  padding: 10px;
+  padding: 12px;
   background: var(--bg);
 }
 
-.record-card-main {
-  flex: 1;
-  min-width: 0;
-  padding: 2px 8px 0 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.record-card-topline {
-  display: flex;
-  justify-content: flex-end;
-  width: 100%;
-  min-height: 1.25rem;
-}
-
 .record-card-date {
-  font-size: 0.875rem;
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8125rem;
   font-weight: 700;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
 .record-card-title {
-  font-size: clamp(1.2rem, 2.8vw, 1.4rem);
+  font-size: clamp(1.05rem, 2.5vw, 1.28rem);
   font-weight: 800;
   color: var(--text);
   word-break: break-word;
   margin: 0;
-  padding-right: 4px;
   line-height: var(--leading-tight);
 }
 
@@ -1299,8 +1328,9 @@ html[data-viewer="app"] #screen-error { display: none !important; }
   flex-wrap: nowrap;
   align-items: center;
   gap: 0;
-  margin-top: 2px;
-  padding: 12px 14px;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  min-width: 0;
   background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -1319,7 +1349,7 @@ html[data-viewer="app"] #screen-error { display: none !important; }
   width: 1px;
   align-self: stretch;
   min-height: 2.25rem;
-  margin: 0 14px;
+  margin: 0 8px;
   background: var(--border);
   flex-shrink: 0;
 }
@@ -1333,7 +1363,7 @@ html[data-viewer="app"] #screen-error { display: none !important; }
 }
 
 .record-metric-value {
-  font-size: clamp(1.15rem, 3vw, 1.45rem);
+  font-size: clamp(1rem, 2.6vw, 1.3rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--text);
@@ -1349,27 +1379,14 @@ html[data-viewer="app"] #screen-error { display: none !important; }
 }
 
 .record-card-memo {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   color: var(--text);
-  margin: 6px 0 0;
+  margin: 0 0 10px;
   padding-top: 8px;
   border-top: 1px solid #f3f4f6;
   line-height: var(--leading-relaxed);
-}
-
-@media (max-width: 480px) {
-  .record-card-metrics {
-    padding: 10px 12px;
-  }
-
-  .record-metric-sep {
-    margin: 0 10px;
-    min-height: 2rem;
-  }
-
-  .record-metric-value {
-    font-size: clamp(1rem, 4.2vw, 1.3rem);
-  }
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .record-card-memo:empty::before {
@@ -1380,23 +1397,24 @@ html[data-viewer="app"] #screen-error { display: none !important; }
 
 .record-card-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   flex-wrap: nowrap;
-  justify-content: center;
   align-self: stretch;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
-  padding-left: 14px;
-  margin-left: 4px;
-  border-left: 1px solid var(--border);
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .record-card-actions button {
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  padding: 10px 16px;
+  padding: 10px 12px;
   min-height: 44px;
+  flex: 1 1 0;
+  min-width: 0;
   border-radius: 10px;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -1428,6 +1446,8 @@ html[data-viewer="app"] #screen-error { display: none !important; }
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow: hidden;
+  overscroll-behavior: contain;
   background: rgba(17, 24, 39, 0.45);
   backdrop-filter: blur(2px);
 }
@@ -1437,21 +1457,129 @@ html[data-viewer="app"] #screen-error { display: none !important; }
 }
 
 .modal-dialog {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  max-width: 440px;
-  max-height: min(90vh, 580px);
-  overflow-y: auto;
+  max-width: 500px;
+  max-height: min(92vh, 720px);
+  overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
-  padding: 26px 26px 22px;
+  padding: 0;
+}
+
+.modal-header-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-shrink: 0;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.modal-btn-header {
+  padding: 9px 16px;
+  min-height: 42px;
+  font-size: 0.9375rem;
+}
+
+.modal-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 20px 22px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-save-preview-wrap {
+  margin-bottom: 18px;
+}
+
+.modal-preview-section-label {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.modal-preview-canvas-host {
+  width: 100%;
+  min-height: 176px;
+  height: 200px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: linear-gradient(160deg, #f0f4ff 0%, #e8edf8 100%);
+}
+
+.modal-preview-canvas-host canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.modal-save-preview-hint {
+  margin: 10px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: var(--leading-relaxed);
+}
+
+.modal-edit-thumb-wrap {
+  margin-bottom: 18px;
+}
+
+.modal-edit-thumb-inner {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  max-height: 220px;
+}
+
+.modal-edit-thumb-img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  height: auto;
+  object-fit: contain;
+}
+
+.modal-edit-thumb-empty {
+  padding: 20px 16px;
+  font-size: 0.9375rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: var(--leading-relaxed);
 }
 
 .modal-title {
-  font-size: 1.3125rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  margin: 0 0 22px;
+  margin: 0;
+  padding: 2px 0 0;
+  flex: 1 1 180px;
+  min-width: 0;
   letter-spacing: -0.02em;
   line-height: var(--leading-tight);
   color: var(--text);
@@ -1539,16 +1667,6 @@ html[data-viewer="app"] #screen-error { display: none !important; }
   line-height: var(--leading-body);
 }
 
-.modal-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-
 .modal-btn {
   font: inherit;
   font-size: 1rem;
@@ -1575,6 +1693,86 @@ html[data-viewer="app"] #screen-error { display: none !important; }
 .modal-btn-secondary:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* 태블릿 · 좁은 노트북 */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .wrap {
+    padding: 26px max(20px, env(safe-area-inset-left, 0px)) 56px max(20px, env(safe-area-inset-right, 0px));
+  }
+
+  .app-tabs {
+    gap: 6px;
+    margin-bottom: 22px;
+  }
+
+  .app-tab {
+    padding: 13px 20px;
+    font-size: 1.015rem;
+    min-height: 46px;
+  }
+
+  .records-list {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 268px), 1fr));
+    gap: 16px;
+  }
+
+  .records-toolbar {
+    gap: 16px 18px;
+  }
+
+  .modal-dialog {
+    max-width: min(480px, 94vw);
+  }
+}
+
+/* 모바일·소형 태블릿: 하단 탭 · 저장소 1열 */
+@media (max-width: 767px) {
+  .wrap {
+    padding: 18px max(14px, env(safe-area-inset-left, 0px)) calc(80px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-right, 0px));
+  }
+
+  .app-tabs {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    gap: 2px;
+    margin-bottom: 0;
+    padding: 10px max(14px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-right, 0px));
+    background: var(--bg);
+    border-bottom: none;
+    border-top: 2px solid var(--border);
+    box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.08);
+  }
+
+  .app-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    padding: 12px 10px;
+    font-size: 1rem;
+    min-height: 46px;
+    margin-bottom: 0;
+    margin-top: -2px;
+    border-radius: 0 0 12px 12px;
+    border-top: 2px solid transparent;
+    border-bottom: 2px solid transparent;
+  }
+
+  .app-tab.active {
+    border-color: var(--border);
+    border-top-color: var(--accent);
+    border-bottom-color: transparent;
+  }
+
+  .records-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 </style>
@@ -1740,9 +1938,32 @@ html[data-viewer="app"] #screen-error { display: none !important; }
   </div>
   </div>
 
+  <button type="button" id="scroll-top-btn" class="scroll-top-btn" aria-label="페이지 맨 위로" title="맨 위로">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
+  </button>
+
   <div id="record-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="record-modal-title" hidden>
     <div class="modal-dialog">
-      <h2 id="record-modal-title" class="modal-title">저장</h2>
+      <div class="modal-header-bar">
+        <h2 id="record-modal-title" class="modal-title">저장</h2>
+        <div class="modal-header-actions">
+          <button type="button" id="modal-btn-primary" class="modal-btn modal-btn-primary modal-btn-header">저장 완료</button>
+          <button type="button" id="modal-btn-cancel" class="modal-btn modal-btn-secondary modal-btn-header">닫기</button>
+        </div>
+      </div>
+      <div class="modal-scroll">
+      <div id="modal-save-preview-wrap" class="modal-save-preview-wrap">
+        <span class="modal-preview-section-label">썸네일 미리보기</span>
+        <div id="modal-preview-canvas-host" class="modal-preview-canvas-host" aria-label="저장용 3D 미리보기"></div>
+        <p id="modal-save-preview-hint" class="modal-save-preview-hint"></p>
+      </div>
+      <div id="modal-edit-thumb-wrap" class="modal-edit-thumb-wrap" hidden>
+        <span class="modal-preview-section-label">미리보기</span>
+        <div class="modal-edit-thumb-inner">
+          <img id="modal-edit-thumb-img" class="modal-edit-thumb-img" alt="" width="200" height="200" loading="lazy" hidden />
+          <div id="modal-edit-thumb-empty" class="modal-edit-thumb-empty">등록된 미리보기 이미지가 없습니다.</div>
+        </div>
+      </div>
       <div class="modal-fields">
         <label class="modal-field">
           <span class="modal-label">이름</span>
@@ -1768,9 +1989,6 @@ html[data-viewer="app"] #screen-error { display: none !important; }
           <textarea id="modal-field-memo" class="modal-textarea" rows="3" maxlength="500"></textarea>
         </label>
       </div>
-      <div class="modal-actions">
-        <button type="button" id="modal-btn-primary" class="modal-btn modal-btn-primary">저장 완료</button>
-        <button type="button" id="modal-btn-cancel" class="modal-btn modal-btn-secondary">취소</button>
       </div>
     </div>
   </div>
@@ -2027,29 +2245,27 @@ html[data-viewer="app"] #screen-error { display: none !important; }
 
       const thumb = r.thumbnail || "";
       const thumbHtml = thumb
-        ? \`<img src="\${thumb.replace(/"/g, "&quot;")}" alt="" width="80" height="80" loading="lazy" />\`
+        ? \`<img src="\${thumb.replace(/"/g, "&quot;")}" alt="" width="200" height="200" loading="lazy" />\`
         : \`<div class="record-card-thumb-fallback">미리보기 없음</div>\`;
 
       return \`<article class="record-card" data-id="\${r.id}">
+        <header class="record-card-head">
+          <h3 class="record-card-title">\${nameHtml}</h3>
+          <span class="record-card-date">\${dateHtml}</span>
+        </header>
         <div class="record-card-thumb">\${thumbHtml}</div>
-        <div class="record-card-main">
-          <div class="record-card-topline">
-            <span class="record-card-date">\${dateHtml}</span>
-          </div>
-          <div class="record-card-title">\${nameHtml}</div>
-          <div class="record-card-metrics" role="group" aria-label="석고·물량">
-            <span class="record-metric-inline">
-              <span class="record-metric-label">석고</span>
-              <span class="record-metric-value">\${plasterHtml}<span class="record-metric-unit"> g</span></span>
-            </span>
-            <span class="record-metric-sep" aria-hidden="true"></span>
-            <span class="record-metric-inline">
-              <span class="record-metric-label">물</span>
-              <span class="record-metric-value">\${waterHtml}<span class="record-metric-unit"> mL</span></span>
-            </span>
-          </div>
-          <p class="record-card-memo">\${memoHtml}</p>
+        <div class="record-card-metrics" role="group" aria-label="석고·물량">
+          <span class="record-metric-inline">
+            <span class="record-metric-label">석고</span>
+            <span class="record-metric-value">\${plasterHtml}<span class="record-metric-unit"> g</span></span>
+          </span>
+          <span class="record-metric-sep" aria-hidden="true"></span>
+          <span class="record-metric-inline">
+            <span class="record-metric-label">물</span>
+            <span class="record-metric-value">\${waterHtml}<span class="record-metric-unit"> mL</span></span>
+          </span>
         </div>
+        <p class="record-card-memo">\${memoHtml}</p>
         <div class="record-card-actions">
           <button type="button" class="btn-record-edit">수정</button>
           <button type="button" class="btn-record-delete">삭제</button>
@@ -2227,6 +2443,292 @@ html[data-viewer="app"] #screen-error { display: none !important; }
       cam.updateProjectionMatrix();
       r.render(slot.scene, cam);
       return dataUrl;
+    }
+
+    let modalPreview = null;
+
+    function capturePreviewAsDataURL(preview, size = 200) {
+      if (!preview?.renderer || !preview?.camera || !preview?.scene || !preview?.mesh) {
+        return makePlaceholderThumbnail();
+      }
+      const r = preview.renderer;
+      const cam = preview.camera;
+      const host = preview.host;
+      const w0 = Math.max(host.clientWidth, 2);
+      const h0 = Math.max(host.clientHeight, 2);
+      const pr = r.getPixelRatio();
+      const SIZE = size;
+
+      r.setPixelRatio(1);
+      r.setSize(SIZE, SIZE);
+      cam.aspect = 1;
+      cam.updateProjectionMatrix();
+      r.render(preview.scene, cam);
+      const dataUrl = r.domElement.toDataURL("image/png");
+
+      r.setPixelRatio(pr);
+      r.setSize(w0, h0);
+      cam.aspect = w0 / h0;
+      cam.updateProjectionMatrix();
+      r.render(preview.scene, cam);
+      return dataUrl;
+    }
+
+    function unbindPreviewOrbitControls(p) {
+      (p._orbitCleanups || []).forEach(fn => {
+        try { fn(); } catch (_) { /* noop */ }
+      });
+      p._orbitCleanups = [];
+    }
+
+    function bindPreviewOrbitControls(p) {
+      const el = p.renderer.domElement;
+      let dragging = false;
+      let lastX = 0;
+      let lastY = 0;
+      const SPEED = 0.008;
+      const cleanups = [];
+      const add = (node, ev, fn, opts) => {
+        node.addEventListener(ev, fn, opts);
+        cleanups.push(() => node.removeEventListener(ev, fn, opts));
+      };
+
+      function applyDelta(dx, dy) {
+        if (!p.mesh) return;
+        const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), dx * SPEED);
+        const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), dy * SPEED);
+        p.mesh.quaternion.premultiply(qY).premultiply(qX);
+      }
+
+      function applyZoom(factor) {
+        const minDist = 0.5;
+        const maxDist = 10000;
+        const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(p.camera.quaternion);
+        const dist = p.camera.position.distanceTo(new THREE.Vector3(0, 0, 0));
+        const step = dist * (1 - factor);
+        p.camera.position.addScaledVector(dir, step);
+        const newDist = p.camera.position.length();
+        if (newDist < minDist) p.camera.position.setLength(minDist);
+        if (newDist > maxDist) p.camera.position.setLength(maxDist);
+      }
+
+      add(el, "mousedown", e => {
+        if (e.button !== 0) return;
+        dragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        el.style.cursor = "grabbing";
+      });
+      add(window, "mousemove", e => {
+        if (!dragging) return;
+        applyDelta(e.clientX - lastX, e.clientY - lastY);
+        lastX = e.clientX;
+        lastY = e.clientY;
+      });
+      add(window, "mouseup", () => {
+        dragging = false;
+        el.style.cursor = "grab";
+      });
+      el.style.cursor = "grab";
+
+      add(el, "wheel", e => {
+        e.preventDefault();
+        applyZoom(e.deltaY > 0 ? 1.12 : 1 / 1.12);
+      }, { passive: false });
+
+      let lastTouchX = 0;
+      let lastTouchY = 0;
+      let lastPinchDist = 0;
+      add(el, "touchstart", e => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+          lastTouchX = e.touches[0].clientX;
+          lastTouchY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          lastPinchDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+      }, { passive: false });
+      add(el, "touchmove", e => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+          applyDelta(e.touches[0].clientX - lastTouchX, e.touches[0].clientY - lastTouchY);
+          lastTouchX = e.touches[0].clientX;
+          lastTouchY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          if (lastPinchDist > 0) applyZoom(lastPinchDist / dist);
+          lastPinchDist = dist;
+        }
+      }, { passive: false });
+      add(el, "touchend", () => {
+        lastPinchDist = 0;
+      }, { passive: true });
+
+      p._orbitCleanups = cleanups;
+    }
+
+    function loopModalPreview() {
+      if (!modalPreview?.renderer) return;
+      modalPreview._raf = requestAnimationFrame(loopModalPreview);
+      modalPreview.renderer.render(modalPreview.scene, modalPreview.camera);
+    }
+
+    function disposeModalPreview() {
+      if (!modalPreview) return;
+      if (modalPreview._raf) cancelAnimationFrame(modalPreview._raf);
+      modalPreview._raf = null;
+      if (modalPreview._resizeObs) {
+        modalPreview._resizeObs.disconnect();
+        modalPreview._resizeObs = null;
+      }
+      unbindPreviewOrbitControls(modalPreview);
+      if (modalPreview.mesh) {
+        modalPreview.scene.remove(modalPreview.mesh);
+        modalPreview.mesh.geometry?.dispose();
+        modalPreview.mesh.material?.dispose();
+        modalPreview.mesh = null;
+      }
+      if (modalPreview.renderer) {
+        modalPreview.renderer.dispose();
+        const cel = modalPreview.renderer.domElement;
+        if (cel?.parentNode) cel.parentNode.removeChild(cel);
+        modalPreview.renderer = null;
+      }
+      modalPreview.scene = null;
+      modalPreview.camera = null;
+      modalPreview = null;
+    }
+
+    function syncSaveModalPreviewUI(hasModel) {
+      const hint = document.getElementById("modal-save-preview-hint");
+      const host = document.getElementById("modal-preview-canvas-host");
+      if (!host) return;
+      if (hasModel) {
+        host.hidden = false;
+        if (hint) {
+          hint.hidden = false;
+          hint.textContent =
+            "메인 뷰어와 같은 모델입니다. 여기서 각도를 맞춘 뒤 저장하면 그 화면이 썸네일로 저장됩니다. 드래그·휠·핀치로 조절할 수 있습니다.";
+        }
+      } else {
+        host.hidden = true;
+        if (hint) {
+          hint.hidden = false;
+          hint.textContent =
+            "불러온 STL이 없어 체적만 저장됩니다. 썸네일은 기본 이미지로 저장됩니다.";
+        }
+      }
+    }
+
+    function setupModalPreviewForSave() {
+      disposeModalPreview();
+      const host = document.getElementById("modal-preview-canvas-host");
+      const slot = viewerSlots.find(s => s.mesh && s.geometry);
+      if (!host) return;
+
+      if (!slot) {
+        syncSaveModalPreviewUI(false);
+        return;
+      }
+
+      syncSaveModalPreviewUI(true);
+      host.innerHTML = "";
+
+      const w = Math.max(host.clientWidth, 200);
+      const h = Math.max(host.clientHeight, 168);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xf0f4ff);
+      const camera = new THREE.PerspectiveCamera(45, w / h, slot.camera.near, slot.camera.far);
+      camera.position.copy(slot.camera.position);
+      camera.quaternion.copy(slot.camera.quaternion);
+      camera.fov = slot.camera.fov;
+      camera.zoom = slot.camera.zoom;
+      camera.near = slot.camera.near;
+      camera.far = slot.camera.far;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      host.appendChild(renderer.domElement);
+
+      const hemi = new THREE.HemisphereLight(0xffffff, 0xdde4f0, 0.25);
+      scene.add(hemi);
+      const dir = new THREE.DirectionalLight(0xffffff, 1.15);
+      const tgt = new THREE.Object3D();
+      tgt.position.set(0, 0, 0);
+      scene.add(tgt);
+      dir.target = tgt;
+      scene.add(dir);
+      dir.position.set(55, 95, 70);
+
+      const geom = slot.mesh.geometry.clone();
+      const mat = slot.mesh.material.clone();
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.quaternion.copy(slot.mesh.quaternion);
+      scene.add(mesh);
+
+      modalPreview = {
+        renderer,
+        scene,
+        camera,
+        mesh,
+        host,
+        _raf: null,
+        _resizeObs: null,
+      };
+
+      bindPreviewOrbitControls(modalPreview);
+      loopModalPreview();
+
+      const ro = new ResizeObserver(() => {
+        if (!modalPreview?.host || !modalPreview.renderer) return;
+        const hw = Math.max(modalPreview.host.clientWidth, 2);
+        const hh = Math.max(modalPreview.host.clientHeight, 2);
+        modalPreview.camera.aspect = hw / hh;
+        modalPreview.camera.updateProjectionMatrix();
+        modalPreview.renderer.setSize(hw, hh);
+      });
+      ro.observe(host);
+      modalPreview._resizeObs = ro;
+    }
+
+    function setupEditModalThumb(record) {
+      disposeModalPreview();
+      const saveWrap = document.getElementById("modal-save-preview-wrap");
+      const editWrap = document.getElementById("modal-edit-thumb-wrap");
+      const img = document.getElementById("modal-edit-thumb-img");
+      const empty = document.getElementById("modal-edit-thumb-empty");
+      if (saveWrap) saveWrap.hidden = true;
+      if (!editWrap || !img || !empty) return;
+      editWrap.hidden = false;
+      const thumb = record.thumbnail || "";
+      if (thumb) {
+        empty.hidden = true;
+        img.hidden = false;
+        img.onload = () => {
+          empty.hidden = true;
+        };
+        img.onerror = () => {
+          img.hidden = true;
+          empty.hidden = false;
+          empty.textContent = "미리보기 이미지를 불러올 수 없습니다.";
+        };
+        img.src = thumb;
+      } else {
+        img.hidden = true;
+        img.removeAttribute("src");
+        empty.hidden = false;
+        empty.textContent = "등록된 미리보기 이미지가 없습니다.";
+      }
     }
 
     function initThreeForSlot(slot) {
@@ -2661,6 +3163,7 @@ html[data-viewer="app"] #screen-error { display: none !important; }
     }
 
     function closeRecordModal() {
+      disposeModalPreview();
       const el = document.getElementById("record-modal");
       if (el) {
         el.hidden = true;
@@ -2687,7 +3190,12 @@ html[data-viewer="app"] #screen-error { display: none !important; }
       document.getElementById("modal-field-memo").value = "";
       const ratioChk = document.getElementById("modal-ratio-sync");
       if (ratioChk) ratioChk.checked = true;
+      const saveWrap = document.getElementById("modal-save-preview-wrap");
+      const editWrap = document.getElementById("modal-edit-thumb-wrap");
+      if (saveWrap) saveWrap.hidden = false;
+      if (editWrap) editWrap.hidden = true;
       openRecordModal();
+      requestAnimationFrame(() => setupModalPreviewForSave());
       document.getElementById("modal-field-name")?.focus();
     }
 
@@ -2703,6 +3211,7 @@ html[data-viewer="app"] #screen-error { display: none !important; }
       const ratioChk = document.getElementById("modal-ratio-sync");
       if (ratioChk) ratioChk.checked = true;
       openRecordModal();
+      setupEditModalThumb(record);
       document.getElementById("modal-field-name")?.focus();
     }
 
@@ -2720,8 +3229,9 @@ html[data-viewer="app"] #screen-error { display: none !important; }
     async function commitRecordModal() {
       const fields = readModalFields();
       if (modalMode === "create") {
-        const slot = viewerSlots.find(s => s.mesh && s.renderer);
-        const thumbnail = slot ? captureSlotThumbnail80(slot) : makePlaceholderThumbnail();
+        const thumbnail = modalPreview?.mesh
+          ? capturePreviewAsDataURL(modalPreview, 200)
+          : makePlaceholderThumbnail();
         const id = Date.now();
         const record = {
           id,
@@ -2853,7 +3363,7 @@ html[data-viewer="app"] #screen-error { display: none !important; }
       }
       if (panelCalc) panelCalc.hidden = !isCalc;
       if (panelStore) panelStore.hidden = isCalc;
-      if (!isCalc) void renderRecordsList({ forceFetch: true });
+      if (!isCalc) void renderRecordsList({ forceFetch: false });
     }
 
     function updatePlasterCalc() {
@@ -2985,6 +3495,59 @@ html[data-viewer="app"] #screen-error { display: none !important; }
     document.getElementById("records-search")?.addEventListener("input", () => void renderRecordsList({ forceFetch: false }));
     document.getElementById("records-sort")?.addEventListener("change", () => void renderRecordsList({ forceFetch: false }));
     void renderRecordsList({ forceFetch: true });
+
+    function setupScrollTopFab() {
+      const btn = document.getElementById("scroll-top-btn");
+      const tabs = document.querySelector(".app-tabs");
+      const modal = document.getElementById("record-modal");
+      const appMain = document.getElementById("app-main");
+      if (!btn || !tabs) return;
+
+      const mq = window.matchMedia("(min-width: 768px)");
+
+      function appMainVisible() {
+        if (!appMain) return false;
+        return window.getComputedStyle(appMain).display !== "none";
+      }
+
+      function tick() {
+        if (!mq.matches || !appMainVisible()) {
+          btn.classList.remove("scroll-top-btn--visible");
+          btn.setAttribute("aria-hidden", "true");
+          btn.tabIndex = -1;
+          return;
+        }
+        if (modal && !modal.hidden) {
+          btn.classList.remove("scroll-top-btn--visible");
+          btn.setAttribute("aria-hidden", "true");
+          btn.tabIndex = -1;
+          return;
+        }
+        const rect = tabs.getBoundingClientRect();
+        const pastTabs = rect.bottom < 8;
+        const show = pastTabs;
+        btn.classList.toggle("scroll-top-btn--visible", show);
+        btn.setAttribute("aria-hidden", show ? "false" : "true");
+        btn.tabIndex = show ? 0 : -1;
+      }
+
+      window.addEventListener("scroll", tick, { passive: true });
+      window.addEventListener("resize", tick, { passive: true });
+      mq.addEventListener("change", tick);
+      if (modal) {
+        const mo = new MutationObserver(tick);
+        mo.observe(modal, { attributes: true, attributeFilter: ["hidden"] });
+      }
+
+      btn.addEventListener("click", () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        btn.blur();
+      });
+
+      tick();
+    }
+
+    setupScrollTopFab();
 
     async function initViewerFromQuery() {
       const params = new URLSearchParams(window.location.search);
