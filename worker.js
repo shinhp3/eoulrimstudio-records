@@ -1937,8 +1937,258 @@ html[data-viewer="app"] #screen-error { display: none !important; }
     border-bottom-color: transparent;
   }
 
+  .main-add-drop {
+    min-height: 112px;
+  }
+
+  .main-add-drop .main-drop-inner {
+    padding: 22px 14px;
+    gap: 8px;
+    font-size: 1rem;
+  }
+
+  .main-add-drop .main-drop-inner svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .main-add-drop .main-drop-sub {
+    font-size: 0.875rem;
+    max-width: none;
+  }
+
+  .slot-toolbar-top {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .slot-title {
+    font-size: 0.9375rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .slot-drop-zone {
+    height: min(44vh, 340px);
+    min-height: 200px;
+  }
+
+  .drop-hint {
+    font-size: 1rem;
+    padding: 0 12px;
+    text-align: center;
+  }
+
+  .toolbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .toolbar .filename {
+    flex-basis: 100%;
+    order: 10;
+    margin-top: 2px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .size-bar {
+    padding: 8px 12px;
+    gap: 10px;
+  }
+
+  section.plaster,
+  section.ratio-calc {
+    padding: 18px 16px 20px;
+    margin-bottom: 18px;
+  }
+
+  section.plaster h2,
+  section.ratio-calc h2 {
+    margin-bottom: 14px;
+  }
+
+  .plaster-results {
+    grid-template-columns: 1fr;
+  }
+
+  .ratio-calc-lead {
+    font-size: 1rem;
+    margin-bottom: 16px;
+    max-width: none;
+  }
+
+  #plaster-vol-manual {
+    padding: 14px 14px;
+    min-height: 52px;
+    font-size: 1.125rem;
+  }
+
+  .plaster-manual-unit {
+    padding: 0 14px;
+    min-height: 52px;
+  }
+
+  .plaster-vol-row .vol-badge {
+    font-size: 0.9375rem;
+    padding: 9px 12px;
+  }
+
+  .plaster-margin-row {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+  }
+
+  .plaster-margin-row label {
+    flex: 1 0 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .plaster-note {
+    font-size: 0.875rem;
+  }
+
+  .records-section {
+    padding: 18px 16px 22px;
+  }
+
+  .records-heading {
+    margin-bottom: 16px;
+  }
+
+  .records-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .records-search-block,
+  .records-sort-block {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .records-sort-block {
+    flex-basis: auto;
+  }
+
   .records-list {
     grid-template-columns: 1fr;
+  }
+
+  .records-empty {
+    padding: 36px 16px;
+    font-size: 1rem;
+  }
+
+  .record-card {
+    padding: 12px 12px 14px;
+  }
+
+  .modal-overlay {
+    padding: max(14px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
+    align-items: center;
+  }
+
+  .modal-dialog {
+    max-height: min(92vh, 680px);
+  }
+
+  .modal-header-bar {
+    padding: 14px 16px 12px;
+  }
+
+  .modal-scroll {
+    padding: 14px 16px 18px;
+  }
+
+  .modal-title {
+    font-size: 1.125rem;
+    flex: 1 1 100%;
+  }
+
+  .modal-header-actions {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+  }
+
+  .modal-preview-canvas-host {
+    min-height: 160px;
+    height: 180px;
+  }
+
+  .p-breakdown-name {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 420px) {
+  .ratio-calc-grid {
+    gap: 14px;
+  }
+
+  .ratio-calc-input {
+    font-size: 1.125rem;
+    padding: 10px 0;
+  }
+
+  .ratio-calc-actions {
+    margin-top: 16px;
+  }
+
+  .ratio-calc-clear {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .plaster-head {
+    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .plaster-head .btn-save-record {
+    width: 100%;
+    margin-left: 0;
+    align-self: stretch;
+  }
+
+  .record-card-metrics {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 0;
+    padding: 10px 10px;
+  }
+
+  .record-metric-sep {
+    align-self: stretch;
+    min-height: 1.75rem;
+    margin: 0 8px;
+  }
+
+  .record-metric-inline {
+    flex: 1 1 auto;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .modal-header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .modal-btn-header {
+    width: 100%;
+    justify-content: center;
   }
 }
 
