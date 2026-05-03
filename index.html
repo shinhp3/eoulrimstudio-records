@@ -47,7 +47,10 @@
     <div id="viewers-root"></div>
 
     <section class="plaster" aria-labelledby="plaster-title">
-      <h2 id="plaster-title">석고 반죽량 계산기</h2>
+      <div class="plaster-head">
+        <h2 id="plaster-title">석고 반죽량 계산기</h2>
+        <button type="button" id="btn-save-record" class="btn-save-record" disabled>저장</button>
+      </div>
       <div id="plaster-content">
         <div class="plaster-vol-row">
           <span class="vol-badge">체적 <strong id="plaster-vol-display">—</strong> mm³</span>
@@ -86,10 +89,6 @@
           </div>
         </div>
         <div id="plaster-breakdown" hidden></div>
-
-        <div class="plaster-save-row">
-          <button type="button" id="btn-save-record" class="btn-save-record" disabled>저장</button>
-        </div>
 
         <p class="plaster-note">
           물:석고 = 70:100 기준 · 실측 2회 평균 계수 적용 (석고 ×1.1163 / 물 ×0.78141)
@@ -172,6 +171,14 @@
     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
   </button>
 
+  <div id="save-commit-overlay" class="save-commit-overlay" hidden>
+    <div class="save-commit-inner">
+      <div class="save-commit-spinner" role="status" aria-live="polite" aria-label="저장 중"></div>
+      <p class="save-commit-msg">저장 중…</p>
+    </div>
+  </div>
+  <div id="save-toast" class="save-toast" role="status" aria-live="polite" hidden></div>
+
   <div id="record-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="record-modal-title" hidden>
     <div class="modal-dialog">
       <div class="modal-header-bar">
@@ -199,14 +206,16 @@
           <span class="modal-label">이름</span>
           <input type="text" id="modal-field-name" class="modal-input" maxlength="200" autocomplete="off" />
         </label>
-        <label class="modal-field">
-          <span class="modal-label">석고량 (g)</span>
-          <input type="number" id="modal-field-plaster" class="modal-input" min="0" step="any" />
-        </label>
-        <label class="modal-field">
-          <span class="modal-label">물량 (mL)</span>
-          <input type="number" id="modal-field-water" class="modal-input" min="0" step="any" />
-        </label>
+        <div class="modal-metrics-row">
+          <label class="modal-field">
+            <span class="modal-label">석고량 (g)</span>
+            <input type="number" id="modal-field-plaster" class="modal-input" min="0" step="any" />
+          </label>
+          <label class="modal-field">
+            <span class="modal-label">물량 (mL)</span>
+            <input type="number" id="modal-field-water" class="modal-input" min="0" step="any" />
+          </label>
+        </div>
         <div class="modal-ratio-row" aria-describedby="modal-ratio-hint">
           <label class="modal-ratio-toggle">
             <input type="checkbox" id="modal-ratio-sync" checked />
@@ -222,6 +231,16 @@
       </div>
     </div>
   </div>
+
+  <dialog id="record-commit-confirm" class="record-commit-dialog" aria-labelledby="record-commit-confirm-msg">
+    <div class="record-commit-dialog-panel">
+      <p id="record-commit-confirm-msg" class="record-commit-dialog-msg">저장하시겠습니까?</p>
+      <div class="record-commit-dialog-actions">
+        <button type="button" id="record-commit-confirm-no" class="modal-btn modal-btn-secondary modal-btn-header">아니요</button>
+        <button type="button" id="record-commit-confirm-yes" class="modal-btn modal-btn-primary modal-btn-header">예</button>
+      </div>
+    </div>
+  </dialog>
 
   <script type="importmap">
   {
@@ -1456,8 +1475,71 @@
       };
     }
 
+    function showSaveCommitOverlay(on, msg = "저장 중…") {
+      const el = document.getElementById("save-commit-overlay");
+      const tx = el?.querySelector(".save-commit-msg");
+      if (tx && msg) tx.textContent = msg;
+      if (el) el.hidden = !on;
+    }
+
+    let saveToastTimer = null;
+    function showSaveToast(text) {
+      const el = document.getElementById("save-toast");
+      if (!el) return;
+      el.textContent = text;
+      el.hidden = false;
+      if (saveToastTimer) clearTimeout(saveToastTimer);
+      saveToastTimer = setTimeout(() => {
+        el.hidden = true;
+        saveToastTimer = null;
+      }, 2800);
+    }
+
+    function confirmRecordCommit() {
+      const dlg = document.getElementById("record-commit-confirm");
+      const msg = document.getElementById("record-commit-confirm-msg");
+      const yesBtn = document.getElementById("record-commit-confirm-yes");
+      const noBtn = document.getElementById("record-commit-confirm-no");
+      if (!dlg || !msg || !yesBtn || !noBtn) return Promise.resolve(false);
+
+      msg.textContent =
+        modalMode === "edit" ? "수정 내용을 저장하시겠습니까?" : "저장하시겠습니까?";
+
+      return new Promise(resolve => {
+        let settled = false;
+        function cleanup() {
+          yesBtn.removeEventListener("click", onYes);
+          noBtn.removeEventListener("click", onNo);
+          dlg.removeEventListener("cancel", onCancel);
+        }
+        function finish(ok) {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          dlg.close();
+          resolve(ok);
+        }
+        function onYes() {
+          finish(true);
+        }
+        function onNo() {
+          finish(false);
+        }
+        function onCancel(e) {
+          e.preventDefault();
+          finish(false);
+        }
+        yesBtn.addEventListener("click", onYes);
+        noBtn.addEventListener("click", onNo);
+        dlg.addEventListener("cancel", onCancel);
+        dlg.showModal();
+      });
+    }
+
     async function commitRecordModal() {
+      const primaryBtn = document.getElementById("modal-btn-primary");
       const fields = readModalFields();
+
       if (modalMode === "create") {
         const thumbnail = modalPreview?.mesh
           ? capturePreviewAsDataURL(modalPreview, 200)
@@ -1472,23 +1554,27 @@
           water: fields.water,
           thumbnail,
         };
-        setRecordsLoading(true, "저장 중…");
+        if (primaryBtn) primaryBtn.disabled = true;
+        showSaveCommitOverlay(true, "저장 중…");
         try {
           await ensureRecordsLoaded(true);
           const records = [...(recordsRemoteCache || [])];
           records.push(record);
           await workerPutRecords(records);
-          closeRecordModal();
           await renderRecordsList({ forceFetch: false });
+          closeRecordModal();
+          showSaveToast("저장되었습니다.");
         } catch (e) {
           alert(`저장에 실패했습니다.\n${e?.message || e}`);
         } finally {
-          setRecordsLoading(false);
+          showSaveCommitOverlay(false);
+          if (primaryBtn) primaryBtn.disabled = false;
         }
         return;
       }
       if (modalMode === "edit" && editingRecordId != null) {
-        setRecordsLoading(true, "수정 반영 중…");
+        if (primaryBtn) primaryBtn.disabled = true;
+        showSaveCommitOverlay(true, "수정 반영 중…");
         try {
           await ensureRecordsLoaded(true);
           const records = [...(recordsRemoteCache || [])];
@@ -1502,12 +1588,14 @@
           rec.plaster = fields.plaster;
           rec.water = fields.water;
           await workerPutRecords(records);
-          closeRecordModal();
           await renderRecordsList({ forceFetch: false });
+          closeRecordModal();
+          showSaveToast("저장되었습니다.");
         } catch (e) {
           alert(`수정에 실패했습니다.\n${e?.message || e}`);
         } finally {
-          setRecordsLoading(false);
+          showSaveCommitOverlay(false);
+          if (primaryBtn) primaryBtn.disabled = false;
         }
       }
     }
@@ -1680,14 +1768,17 @@
 
     document.getElementById("btn-save-record")?.addEventListener("click", openSaveModal);
 
-    document.getElementById("modal-btn-primary")?.addEventListener("click", () => void commitRecordModal());
-    document.getElementById("modal-btn-cancel")?.addEventListener("click", closeRecordModal);
-    document.getElementById("record-modal")?.addEventListener("click", e => {
-      if (e.target.id === "record-modal") closeRecordModal();
+    document.getElementById("modal-btn-primary")?.addEventListener("click", async () => {
+      if (!(await confirmRecordCommit())) return;
+      await commitRecordModal();
     });
+    document.getElementById("modal-btn-cancel")?.addEventListener("click", closeRecordModal);
     document.addEventListener("keydown", e => {
+      if (e.key !== "Escape") return;
+      const confirmDlg = document.getElementById("record-commit-confirm");
+      if (confirmDlg?.open) return;
       const modal = document.getElementById("record-modal");
-      if (e.key === "Escape" && modal && !modal.hidden) closeRecordModal();
+      if (modal && !modal.hidden) closeRecordModal();
     });
 
     document.getElementById("records-list")?.addEventListener("click", e => {
