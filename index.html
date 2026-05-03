@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STL · 석고 반죽량 계산</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <script>
+  (function () {
+    var q = new URLSearchParams(window.location.search).get("model");
+    document.documentElement.setAttribute("data-viewer", (q && String(q).trim()) ? "loading" : "app");
+  })();
+  </script>
+  <div id="screen-loading" class="boot-screen" aria-live="polite">
+    <div class="boot-inner">
+      <div class="boot-spinner" role="status" aria-label="로딩 중"></div>
+      <p>모델을 불러오는 중…</p>
+    </div>
+  </div>
+  <div id="screen-error" class="boot-screen">
+    <div class="boot-inner">
+      <h1>모델을 불러올 수 없습니다</h1>
+      <p class="boot-muted">URL의 <code>?model=파일이름</code>이 올바른지, 저장소 <code>models/</code>에 해당 STL이 있는지 확인해 주세요.</p>
+    </div>
+  </div>
+  <div id="app-main">
+  <div class="wrap">
+    <nav class="app-tabs" role="tablist" aria-label="메인 메뉴">
+      <button type="button" class="app-tab active" role="tab" aria-selected="true" id="tab-btn-calc" data-tab="calc">계산기</button>
+      <button type="button" class="app-tab" role="tab" aria-selected="false" id="tab-btn-store" data-tab="store">저장소</button>
+    </nav>
+
+    <div id="panel-calc" class="app-panel" role="tabpanel" aria-labelledby="tab-btn-calc">
+
+    <div id="main-add-drop" class="main-add-drop" role="button" tabindex="0" aria-label="STL을 여기에 놓거나 클릭하여 추가">
+      <input type="file" id="main-add-files" multiple accept=".stl,.STL" hidden />
+      <div class="main-drop-inner">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+        <span><strong>STL을 여기에 드롭</strong>하거나 클릭해 선택</span>
+        <span class="main-drop-sub">여러 파일을 한 번에 올리면 아래에 뷰 카드가 순서대로 생깁니다.</span>
+      </div>
+    </div>
+    <div id="viewers-root"></div>
+
+    <section class="plaster" aria-labelledby="plaster-title">
+      <h2 id="plaster-title">석고 반죽량 계산기</h2>
+      <div id="plaster-content">
+        <div class="plaster-vol-row">
+          <span class="vol-badge">체적 <strong id="plaster-vol-display">—</strong> mm³</span>
+          <span class="vol-badge"><strong id="plaster-vol-cc">—</strong></span>
+        </div>
+        <div class="plaster-manual-wrap">
+          
+          <div class="plaster-manual-input-wrap">
+            <input
+              type="number"
+              id="plaster-vol-manual"
+              min="0"
+              step="1"
+              placeholder="체적 직접 입력란"
+              inputmode="numeric"
+              autocomplete="off"
+            />
+            <span class="plaster-manual-unit">mm³</span>
+          </div>
+        </div>
+        <div class="plaster-margin-row">
+          <label>여유분</label>
+          <input type="range" id="plaster-margin" min="0" max="30" step="5" value="10" />
+          <span class="plaster-margin-val" id="plaster-margin-out">+10%</span>
+        </div>
+        <div class="plaster-results">
+          <div class="plaster-box">
+            <div class="p-label">석고 (합산)</div>
+            <div class="p-actual" id="p-plaster-actual">—<small class="p-unit"> g</small></div>
+            <div class="p-recommend">추천값 → <span id="p-plaster-rec">—</span> g</div>
+          </div>
+          <div class="plaster-box">
+            <div class="p-label">물 (합산)</div>
+            <div class="p-actual" id="p-water-actual">—<small class="p-unit"> mL</small></div>
+            <div class="p-recommend">추천값 → <span id="p-water-rec">—</span> mL</div>
+          </div>
+        </div>
+        <div id="plaster-breakdown" hidden></div>
+
+        <div class="plaster-save-row">
+          <button type="button" id="btn-save-record" class="btn-save-record" disabled>저장</button>
+        </div>
+
+        <p class="plaster-note">
+          물:석고 = 70:100 기준 · 실측 2회 평균 계수 적용 (석고 ×1.1163 / 물 ×0.78141)<br>
+          추천값 물량은 <em>석고 추천값 × 0.70</em>으로 비율 일치 보장합니다.
+        </p>
+      </div>
+    </section>
+
+    <section class="ratio-calc" aria-labelledby="ratio-calc-title">
+      <div class="ratio-calc-head">
+        <h2 id="ratio-calc-title">석고·물 비율 계산</h2>
+        <p class="ratio-calc-lead">석고 10 : 물 7 비율입니다. <strong>석고</strong> 또는 <strong>물</strong> 중 하나만 입력하면 나머지가 자동으로 맞춰집니다.</p>
+      </div>
+      <div class="ratio-calc-card">
+        <div class="ratio-calc-grid">
+          <div class="ratio-calc-cell">
+            <label class="ratio-calc-label" for="ratio-input-plaster">석고량</label>
+            <div class="ratio-calc-input-wrap">
+              <input type="number" id="ratio-input-plaster" class="ratio-calc-input" min="0" step="any" inputmode="decimal" placeholder="g 입력" autocomplete="off" />
+              <span class="ratio-calc-unit">g</span>
+            </div>
+          </div>
+          <div class="ratio-calc-connector" aria-hidden="true">
+            <span class="ratio-calc-icon">⇄</span>
+            <span class="ratio-calc-ratio-tag">10 : 7</span>
+          </div>
+          <div class="ratio-calc-cell">
+            <label class="ratio-calc-label" for="ratio-input-water">물량</label>
+            <div class="ratio-calc-input-wrap">
+              <input type="number" id="ratio-input-water" class="ratio-calc-input" min="0" step="any" inputmode="decimal" placeholder="mL 입력" autocomplete="off" />
+              <span class="ratio-calc-unit">mL</span>
+            </div>
+          </div>
+        </div>
+        <div class="ratio-calc-actions">
+          <button type="button" id="ratio-calc-clear" class="ratio-calc-clear">입력 초기화</button>
+        </div>
+      </div>
+    </section>
+    </div>
+
+    <div id="panel-store" class="app-panel" role="tabpanel" aria-labelledby="tab-btn-store" hidden>
+      <section class="records-section" aria-labelledby="records-heading">
+        <h2 id="records-heading" class="records-heading">저장된 기록</h2>
+
+        <div class="records-toolbar">
+          <div class="records-search-block">
+            <label class="records-field-label" for="records-search">검색</label>
+            <input type="search" id="records-search" class="records-search" placeholder="이름·메모·날짜·숫자…" autocomplete="off" enterkeyhint="search" />
+          </div>
+          <div class="records-sort-block">
+            <label class="records-field-label" for="records-sort">정렬</label>
+            <select id="records-sort" class="records-sort">
+              <option value="date-desc">날짜 · 최신순</option>
+              <option value="date-asc">날짜 · 오래된순</option>
+              <option value="name-asc">이름 · 가나다순</option>
+              <option value="name-desc">이름 · 역순</option>
+              <option value="plaster-desc">석고량 · 많은순</option>
+              <option value="plaster-asc">석고량 · 적은순</option>
+              <option value="water-desc">물량 · 많은순</option>
+              <option value="water-asc">물량 · 적은순</option>
+            </select>
+          </div>
+        </div>
+        <p id="records-status" class="records-status" role="status" aria-live="polite" hidden></p>
+        <div id="records-loading" class="records-loading" hidden aria-busy="true">
+          <span class="records-loading-spinner" aria-hidden="true"></span>
+          <span id="records-loading-text" class="records-loading-text">불러오는 중…</span>
+        </div>
+
+        <p id="records-count" class="records-count" hidden></p>
+
+        <p id="records-empty" class="records-empty">저장된 기록이 없습니다.</p>
+        <div id="records-list" class="records-list"></div>
+      </section>
+    </div>
+  </div>
+  </div>
+
+  <div id="record-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="record-modal-title" hidden>
+    <div class="modal-dialog">
+      <h2 id="record-modal-title" class="modal-title">저장</h2>
+      <div class="modal-fields">
+        <label class="modal-field">
+          <span class="modal-label">이름</span>
+          <input type="text" id="modal-field-name" class="modal-input" maxlength="200" autocomplete="off" />
+        </label>
+        <label class="modal-field">
+          <span class="modal-label">석고량 (g)</span>
+          <input type="number" id="modal-field-plaster" class="modal-input" min="0" step="any" />
+        </label>
+        <label class="modal-field">
+          <span class="modal-label">물량 (mL)</span>
+          <input type="number" id="modal-field-water" class="modal-input" min="0" step="any" />
+        </label>
+        <div class="modal-ratio-row" aria-describedby="modal-ratio-hint">
+          <label class="modal-ratio-toggle">
+            <input type="checkbox" id="modal-ratio-sync" checked />
+            <span>석고 10 : 물 7 비율 자동 적용</span>
+          </label>
+          <p id="modal-ratio-hint" class="modal-ratio-hint">켜 두면 석고량 또는 물량을 바꿀 때 다른 쪽이 같은 비율로 맞춰집니다. 끄면 각각 독립적으로 입력할 수 있습니다.</p>
+        </div>
+        <label class="modal-field">
+          <span class="modal-label">메모</span>
+          <textarea id="modal-field-memo" class="modal-textarea" rows="3" maxlength="500"></textarea>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="modal-btn-primary" class="modal-btn modal-btn-primary">저장 완료</button>
+        <button type="button" id="modal-btn-cancel" class="modal-btn modal-btn-secondary">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from "three";
+    import { STLLoader } from "three/addons/loaders/STLLoader.js";
+
+    /** GitHub — STL 모델 파일 (raw, 기존) */
+    const GITHUB_USERNAME = "shinhp3";
+    const STL_MODELS_REPO = "eoulrimstudio-models";
+    const GITHUB_BRANCH = "main";
+
+    /** Cloudflare Worker — records.json (GitHub 토큰은 Worker env 전용) */
+    const RECORDS_WORKER_BASE = "https://eoulrimstudio-records.eoulrimstudio.workers.dev";
+
+    function buildRawStlUrl(modelBaseName) {
+      const name = String(modelBaseName).replace(/\.stl$/i, "").trim();
+      return `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${STL_MODELS_REPO}/${GITHUB_BRANCH}/models/${name}.stl`;
+    }
+
+    function sanitizeModelParam(raw) {
+      if (!raw || typeof raw !== "string") return "";
+      const base = raw.trim().replace(/\.stl$/i, "");
+      if (!/^[a-zA-Z0-9._-]+$/.test(base)) return "";
+      return base;
+    }
+
+    function computeVolumeMm3(geometry) {
+      const pos = geometry.attributes.position;
+      const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
+      let sum = 0;
+      for (let i = 0; i < pos.count; i += 3) {
+        vA.fromBufferAttribute(pos, i);
+        vB.fromBufferAttribute(pos, i + 1);
+        vC.fromBufferAttribute(pos, i + 2);
+        sum += vA.dot(vB.cross(vC)) / 6;
+      }
+      return Math.abs(sum);
+    }
+
+    function formatMm(n) {
+      return n >= 100 ? n.toFixed(1) : n >= 10 ? n.toFixed(2) : n.toFixed(3);
+    }
+    function formatNum(n, digits) {
+      return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(n);
+    }
+
+    /** 석고(g) : 물(mL) = 10 : 7 — 비율 계산기·저장 모달 공통 */
+    const PLASTER_WATER_RATIO = { plaster: 10, water: 7 };
+
+    /** GitHub records.json 동기화 상태 */
+    let recordsRemoteCache = null;
+    let recordsFileSha = null;
+    let recordsLoadedOnce = false;
+
+    function migrateRecord(r) {
+      if (!r || typeof r !== "object") return null;
+      const id = r.id != null ? Number(r.id) : Date.now();
+      return {
+        id,
+        date: typeof r.date === "string" ? r.date : formatRecordDate(new Date(id)),
+        name: String(r.name != null ? r.name : (r.filename != null ? r.filename : "이름 없음")),
+        memo: String(r.memo != null ? r.memo : ""),
+        plaster: Number(r.plaster != null ? r.plaster : (r.plasterRec != null ? r.plasterRec : (r.plasterActual ?? 0))),
+        water: Number(r.water != null ? r.water : (r.waterRec != null ? r.waterRec : (r.waterActual ?? 0))),
+        thumbnail: typeof r.thumbnail === "string" ? r.thumbnail : "",
+      };
+    }
+
+    function normalizeRecordsPayload(parsed) {
+      if (!parsed) return [];
+      if (Array.isArray(parsed)) return parsed.map(migrateRecord).filter(Boolean);
+      if (parsed.records != null && Array.isArray(parsed.records)) {
+        return parsed.records.map(migrateRecord).filter(Boolean);
+      }
+      return [];
+    }
+
+    function recordToCleanJson(r) {
+      return {
+        id: r.id,
+        date: r.date,
+        name: r.name,
+        memo: r.memo,
+        plaster: r.plaster,
+        water: r.water,
+        thumbnail: r.thumbnail,
+      };
+    }
+
+    function recordsWorkerUrl(path) {
+      const base = String(RECORDS_WORKER_BASE || "").replace(/\/$/, "");
+      const p = path.startsWith("/") ? path : "/" + path;
+      return base + p;
+    }
+
+    async function workerFetchRecordsMeta() {
+      const res = await fetch(recordsWorkerUrl("/records"));
+      const shaHdr = res.headers.get("X-GitHub-Content-Sha");
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`응답을 해석할 수 없습니다 (HTTP ${res.status})`);
+      }
+      if (!res.ok || data.success === false) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      const records = normalizeRecordsPayload(data);
+      const sha = shaHdr || null;
+      return { records, sha };
+    }
+
+    async function workerPutRecords(records) {
+      const res = await fetch(recordsWorkerUrl("/records"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          records: records.map(recordToCleanJson),
+          sha: recordsFileSha ?? "",
+        }),
+      });
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      if (!res.ok || data.success === false) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      const meta = await workerFetchRecordsMeta();
+      recordsRemoteCache = meta.records;
+      recordsFileSha = meta.sha;
+    }
+
+    async function ensureRecordsLoaded(force = false) {
+      if (!force && recordsLoadedOnce) return;
+      const meta = await workerFetchRecordsMeta();
+      recordsRemoteCache = meta.records;
+      recordsFileSha = meta.sha;
+      recordsLoadedOnce = true;
+    }
+
+    function setRecordsLoading(on, text = "불러오는 중…") {
+      const el = document.getElementById("records-loading");
+      const tx = document.getElementById("records-loading-text");
+      const st = document.getElementById("records-status");
+      if (tx) tx.textContent = text;
+      if (el) el.hidden = !on;
+      if (st) {
+        st.hidden = !on;
+        st.textContent = on ? text : "";
+      }
+    }
+
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function escapeRegExp(s) {
+      return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    /** 검색어와 일치하는 부분만 형광 스타일로 표시 */
+    function highlightSearch(text, query) {
+      const t = String(text ?? "");
+      const q = String(query ?? "").trim();
+      if (!q) return escapeHtml(t);
+      try {
+        const re = new RegExp(`(${escapeRegExp(q)})`, "gi");
+        return t.replace(re, match => `<mark class="search-highlight">${escapeHtml(match)}</mark>`);
+      } catch {
+        return escapeHtml(t);
+      }
+    }
+
+    function filterRecordsBySearch(records, query) {
+      const q = String(query ?? "").trim().toLowerCase();
+      if (!q) return records.slice();
+      return records.filter(r => {
+        const blob = [
+          r.name,
+          r.memo,
+          r.date,
+          typeof r.plaster === "number" ? String(r.plaster) : "",
+          typeof r.water === "number" ? String(r.water) : "",
+        ].join(" ").toLowerCase();
+        return blob.includes(q);
+      });
+    }
+
+    function sortRecordsList(records, sortKey) {
+      const arr = records.slice();
+      const pn = (x) => (typeof x === "number" && Number.isFinite(x) ? x : 0);
+      switch (sortKey) {
+        case "date-asc":
+          arr.sort((a, b) => a.id - b.id);
+          break;
+        case "date-desc":
+          arr.sort((a, b) => b.id - a.id);
+          break;
+        case "name-asc":
+          arr.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ko"));
+          break;
+        case "name-desc":
+          arr.sort((a, b) => String(b.name || "").localeCompare(String(a.name || ""), "ko"));
+          break;
+        case "plaster-asc":
+          arr.sort((a, b) => pn(a.plaster) - pn(b.plaster));
+          break;
+        case "plaster-desc":
+          arr.sort((a, b) => pn(b.plaster) - pn(a.plaster));
+          break;
+        case "water-asc":
+          arr.sort((a, b) => pn(a.water) - pn(b.water));
+          break;
+        case "water-desc":
+          arr.sort((a, b) => pn(b.water) - pn(a.water));
+          break;
+        default:
+          arr.sort((a, b) => b.id - a.id);
+      }
+      return arr;
+    }
+
+    function buildRecordCardHtml(r, query) {
+      const plasterDisp = typeof r.plaster === "number"
+        ? formatNum(r.plaster, r.plaster % 1 === 0 ? 0 : 2)
+        : "—";
+      const waterDisp = typeof r.water === "number"
+        ? (r.water % 1 === 0 ? r.water.toLocaleString("ko-KR") : r.water.toFixed(1))
+        : "—";
+
+      const nameHtml = highlightSearch(r.name || "", query);
+      const memoHtml = highlightSearch(r.memo || "", query);
+      const dateHtml = highlightSearch(r.date || "", query);
+      const plasterHtml = highlightSearch(plasterDisp, query);
+      const waterHtml = highlightSearch(waterDisp, query);
+
+      const thumb = r.thumbnail || "";
+      const thumbHtml = thumb
+        ? `<img src="${thumb.replace(/"/g, "&quot;")}" alt="" width="80" height="80" loading="lazy" />`
+        : `<div class="record-card-thumb-fallback">미리보기 없음</div>`;
+
+      return `<article class="record-card" data-id="${r.id}">
+        <div class="record-card-thumb">${thumbHtml}</div>
+        <div class="record-card-main">
+          <div class="record-card-topline">
+            <span class="record-card-date">${dateHtml}</span>
+          </div>
+          <div class="record-card-title">${nameHtml}</div>
+          <div class="record-card-metrics" role="group" aria-label="석고·물량">
+            <span class="record-metric-inline">
+              <span class="record-metric-label">석고</span>
+              <span class="record-metric-value">${plasterHtml}<span class="record-metric-unit"> g</span></span>
+            </span>
+            <span class="record-metric-sep" aria-hidden="true"></span>
+            <span class="record-metric-inline">
+              <span class="record-metric-label">물</span>
+              <span class="record-metric-value">${waterHtml}<span class="record-metric-unit"> mL</span></span>
+            </span>
+          </div>
+          <p class="record-card-memo">${memoHtml}</p>
+        </div>
+        <div class="record-card-actions">
+          <button type="button" class="btn-record-edit">수정</button>
+          <button type="button" class="btn-record-delete">삭제</button>
+        </div>
+      </article>`;
+    }
+
+    function formatRecordDate(d) {
+      const x = d instanceof Date ? d : new Date(d);
+      const pad = n => String(n).padStart(2, "0");
+      return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())} ${pad(x.getHours())}:${pad(x.getMinutes())}`;
+    }
+
+    function makePlaceholderThumbnail() {
+      const c = document.createElement("canvas");
+      const S = 80;
+      c.width = S;
+      c.height = S;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#e8edf8";
+      ctx.fillRect(0, 0, S, S);
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("미리보기 없음", S / 2, S / 2);
+      return c.toDataURL("image/png");
+    }
+
+    function preventNavDrop(e) {
+      e.preventDefault();
+    }
+    ["dragenter", "dragover", "drop"].forEach(ev => {
+      window.addEventListener(ev, preventNavDrop, true);
+    });
+
+    const viewersRoot    = document.getElementById("viewers-root");
+    const mainAddDrop    = document.getElementById("main-add-drop");
+    const mainAddFiles   = document.getElementById("main-add-files");
+    const btnClearAll    = document.getElementById("btn-clear-all");
+
+    const MODEL_MESH_COLOR = 0xa3f958;
+
+    function applySlotLighting(slot) {
+      if (!slot?.scene || !slot?.dirLight || !slot?.hemiLight) return;
+      const hemi = slot.hemiLight;
+      const dir  = slot.dirLight;
+      if (dir.parent) dir.parent.remove(dir);
+      if (dir.target.parent) dir.target.parent.remove(dir.target);
+      hemi.intensity = 0.25;
+      dir.intensity  = 1.15;
+      slot.scene.add(dir.target);
+      dir.target.position.set(0, 0, 0);
+      slot.scene.add(dir);
+      dir.position.set(55, 95, 70);
+    }
+
+    function setupMeshDrag(slot) {
+      const el = slot.renderer.domElement;
+      let dragging = false;
+      let lastX = 0, lastY = 0;
+      const SPEED = 0.008;
+
+      function applyDelta(dx, dy) {
+        if (!slot.mesh) return;
+        const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), dx * SPEED);
+        const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), dy * SPEED);
+        slot.mesh.quaternion.premultiply(qY).premultiply(qX);
+      }
+
+      function applyZoom(factor) {
+        const minDist = 0.5;
+        const maxDist = 10000;
+        const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(slot.camera.quaternion);
+        const dist = slot.camera.position.distanceTo(slot.controls_target || new THREE.Vector3(0, 0, 0));
+        const step = dist * (1 - factor);
+        slot.camera.position.addScaledVector(dir, step);
+        const newDist = slot.camera.position.length();
+        if (newDist < minDist) slot.camera.position.setLength(minDist);
+        if (newDist > maxDist) slot.camera.position.setLength(maxDist);
+      }
+
+      el.addEventListener("mousedown", e => {
+        if (e.button !== 0) return;
+        dragging = true;
+        lastX = e.clientX; lastY = e.clientY;
+        el.style.cursor = "grabbing";
+      });
+      window.addEventListener("mousemove", e => {
+        if (!dragging) return;
+        applyDelta(e.clientX - lastX, e.clientY - lastY);
+        lastX = e.clientX; lastY = e.clientY;
+      });
+      window.addEventListener("mouseup", () => { dragging = false; el.style.cursor = "grab"; });
+      el.style.cursor = "grab";
+
+      el.addEventListener("wheel", e => {
+        e.preventDefault();
+        applyZoom(e.deltaY > 0 ? 1.12 : 1 / 1.12);
+      }, { passive: false });
+
+      let lastTouchX = 0, lastTouchY = 0, lastPinchDist = 0;
+      el.addEventListener("touchstart", e => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+          lastTouchX = e.touches[0].clientX;
+          lastTouchY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          lastPinchDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+      }, { passive: false });
+      el.addEventListener("touchmove", e => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+          applyDelta(e.touches[0].clientX - lastTouchX, e.touches[0].clientY - lastTouchY);
+          lastTouchX = e.touches[0].clientX;
+          lastTouchY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          if (lastPinchDist > 0) applyZoom(lastPinchDist / dist);
+          lastPinchDist = dist;
+        }
+      }, { passive: false });
+      el.addEventListener("touchend", () => { lastPinchDist = 0; }, { passive: true });
+    }
+
+    let viewerSeq = 0;
+    let viewerSlots = [];
+
+    function collectModelsWithGeometry() {
+      return viewerSlots.filter(s => s.geometry && s.mesh && s.arrayBuffer).map(s => ({
+        name: s.fileName,
+        geometry: s.geometry,
+        mesh: s.mesh,
+        arrayBuffer: s.arrayBuffer,
+      }));
+    }
+
+    function resizeSlotRenderer(slot) {
+      if (!slot.renderer || !slot.canvasHost || !slot.camera) return;
+      const host = slot.canvasHost;
+      const w = Math.max(host.clientWidth, 2);
+      const h = Math.max(host.clientHeight, 2);
+      slot.camera.aspect = w / h;
+      slot.camera.updateProjectionMatrix();
+      slot.renderer.setSize(w, h);
+    }
+
+    function captureSlotThumbnail80(slot) {
+      if (!slot?.renderer || !slot?.camera || !slot.scene) return makePlaceholderThumbnail();
+      const r = slot.renderer;
+      const cam = slot.camera;
+      const host = slot.canvasHost;
+      const w0 = Math.max(host.clientWidth, 2);
+      const h0 = Math.max(host.clientHeight, 2);
+      const pr = r.getPixelRatio();
+      const SIZE = 80;
+
+      r.setPixelRatio(1);
+      r.setSize(SIZE, SIZE);
+      cam.aspect = 1;
+      cam.updateProjectionMatrix();
+      r.render(slot.scene, cam);
+      const dataUrl = r.domElement.toDataURL("image/png");
+
+      r.setPixelRatio(pr);
+      r.setSize(w0, h0);
+      cam.aspect = w0 / h0;
+      cam.updateProjectionMatrix();
+      r.render(slot.scene, cam);
+      return dataUrl;
+    }
+
+    function initThreeForSlot(slot) {
+      const host = slot.canvasHost;
+      const w = Math.max(host.clientWidth, 2);
+      const h = Math.max(host.clientHeight, 2);
+      slot.scene = new THREE.Scene();
+      slot.scene.background = new THREE.Color(0xf0f4ff);
+      slot.camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 2000);
+      slot.initialCameraPos = new THREE.Vector3(0, 0, 120);
+      slot.camera.position.copy(slot.initialCameraPos);
+      slot.camera.lookAt(0, 0, 0);
+      slot.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      slot.renderer.setSize(w, h);
+      slot.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      host.appendChild(slot.renderer.domElement);
+
+      slot.hemiLight = new THREE.HemisphereLight(0xffffff, 0xdde4f0, 0.25);
+      slot.scene.add(slot.hemiLight);
+      slot.dirLight = new THREE.DirectionalLight(0xffffff, 1.15);
+      slot.scene.add(slot.dirLight.target);
+      slot.dirLight.target.position.set(0, 0, 0);
+      slot.scene.add(slot.dirLight);
+      slot.dirLight.position.set(55, 95, 70);
+      applySlotLighting(slot);
+
+      setupMeshDrag(slot);
+
+      function loop() {
+        slot._raf = requestAnimationFrame(loop);
+        slot.renderer.render(slot.scene, slot.camera);
+      }
+      loop();
+
+      slot._onResize = () => resizeSlotRenderer(slot);
+      window.addEventListener("resize", slot._onResize);
+      requestAnimationFrame(() => resizeSlotRenderer(slot));
+    }
+
+    function clearSlotMesh(slot) {
+      if (!slot.scene) return;
+      if (slot.mesh) {
+        slot.scene.remove(slot.mesh);
+        slot.mesh.geometry?.dispose();
+        slot.mesh.material?.dispose();
+        slot.mesh = undefined;
+      }
+      slot.geometry = undefined;
+      slot.arrayBuffer = undefined;
+      slot.fileName = "";
+      slot.dropZone.classList.remove("has-model");
+      slot.card.classList.remove("viewer-card--has-model");
+      slot.fileLabel.textContent = "파일 없음";
+      if (slot.sizeBar) slot.sizeBar.classList.remove("visible");
+    }
+
+    function disposeSlot(slot) {
+      if (slot._raf) cancelAnimationFrame(slot._raf);
+      slot._raf = null;
+      if (slot._onResize) window.removeEventListener("resize", slot._onResize);
+      clearSlotMesh(slot);
+      if (slot.renderer) {
+        slot.renderer.dispose();
+        const el = slot.renderer.domElement;
+        if (el?.parentNode) el.parentNode.removeChild(el);
+        slot.renderer = null;
+      }
+      slot.scene = null;
+      slot.camera = null;
+    }
+
+    function fitCameraToSlotMesh(slot) {
+      if (!slot.mesh || !slot.camera) return;
+      const box = new THREE.Box3().setFromObject(slot.mesh);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z, 1);
+      const dist = maxDim * 2.0;
+      slot.camera.near = Math.max(0.01, dist / 200);
+      slot.camera.far = dist * 50;
+      slot.camera.updateProjectionMatrix();
+      slot.initialCameraPos = new THREE.Vector3(0, 0, dist);
+      slot.camera.position.copy(slot.initialCameraPos);
+      slot.camera.lookAt(0, 0, 0);
+    }
+
+    async function loadSTLIntoSlotFromArrayBuffer(slot, arrayBuffer, fileName) {
+      const loader = new STLLoader();
+      const geometry = loader.parse(arrayBuffer);
+      geometry.computeVertexNormals();
+      geometry.center();
+      clearSlotMesh(slot);
+      slot.geometry = geometry;
+      slot.arrayBuffer = arrayBuffer;
+      slot.fileName = fileName;
+      const mesh = new THREE.Mesh(
+        geometry,
+        new THREE.MeshStandardMaterial({ color: MODEL_MESH_COLOR, metalness: 0.05, roughness: 0.55 })
+      );
+      slot.mesh = mesh;
+      slot.scene.add(mesh);
+      fitCameraToSlotMesh(slot);
+      slot.dropZone.classList.add("has-model");
+      slot.card.classList.add("viewer-card--has-model");
+      slot.fileLabel.textContent = fileName;
+
+      const box = new THREE.Box3().setFromObject(mesh);
+      const sz = new THREE.Vector3();
+      box.getSize(sz);
+      slot.sizeX.textContent = formatMm(sz.x);
+      slot.sizeY.textContent = formatMm(sz.y);
+      slot.sizeZ.textContent = formatMm(sz.z);
+      slot.sizeBar.classList.add("visible");
+
+      refreshAfterModelsChange();
+    }
+
+    async function loadSTLIntoSlot(slot, file) {
+      if (!file || !file.name.toLowerCase().endsWith(".stl")) {
+        alert("STL 파일(.stl)만 지원합니다.");
+        return;
+      }
+      const arrayBuffer = await file.arrayBuffer();
+      await loadSTLIntoSlotFromArrayBuffer(slot, arrayBuffer, file.name);
+    }
+
+    function setupSlotClickOpenFile(slot) {
+      const { dropZone, canvasHost, fileInput } = slot;
+      dropZone.addEventListener("click", ev => {
+        if (slot.geometry && ev.target.closest(".slot-canvas-host")) return;
+        fileInput.click();
+      });
+    }
+
+    function filterStlFiles(fileList) {
+      return Array.from(fileList || []).filter(f => f.name.toLowerCase().endsWith(".stl"));
+    }
+
+    async function addViewsFromStlFiles(files) {
+      const stl = filterStlFiles(files);
+      if (stl.length === 0) {
+        if (fileListLength(files) > 0) alert("STL 파일(.stl)만 지원합니다.");
+        return;
+      }
+      for (const f of stl) {
+        const slot = createViewerSlot();
+        await loadSTLIntoSlot(slot, f);
+      }
+    }
+
+    function fileListLength(fileList) {
+      return fileList ? fileList.length : 0;
+    }
+
+    function setupMainAddDrop() {
+      mainAddDrop.addEventListener("dragenter", e => { e.preventDefault(); mainAddDrop.classList.add("dragover"); });
+      mainAddDrop.addEventListener("dragover", e => { e.preventDefault(); mainAddDrop.classList.add("dragover"); });
+      mainAddDrop.addEventListener("dragleave", e => {
+        if (!e.relatedTarget || !mainAddDrop.contains(e.relatedTarget)) mainAddDrop.classList.remove("dragover");
+      });
+      mainAddDrop.addEventListener("drop", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        mainAddDrop.classList.remove("dragover");
+        addViewsFromStlFiles(e.dataTransfer?.files);
+      });
+      mainAddDrop.addEventListener("click", () => mainAddFiles.click());
+      mainAddDrop.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          mainAddFiles.click();
+        }
+      });
+      mainAddFiles.addEventListener("change", () => {
+        addViewsFromStlFiles(mainAddFiles.files);
+        mainAddFiles.value = "";
+      });
+    }
+
+    function createViewerSlot() {
+      viewerSeq += 1;
+      const card = document.createElement("div");
+      card.className = "viewer-card";
+      card.innerHTML = `
+        <div class="slot-toolbar-top">
+          <span class="slot-title">뷰어 ${viewerSeq}</span>
+          <button type="button" class="btn-remove-slot" title="이 뷰 닫기" aria-label="이 뷰 닫기">×</button>
+        </div>
+        <div class="slot-drop-zone">
+          <div class="slot-canvas-host"></div>
+          <div class="drop-hint">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+            <span>이 박스를 클릭해 STL 선택</span>
+            <span class="drop-hint-sub">또는 아래 <strong>STL 선택</strong> (한 뷰당 1개)</span>
+          </div>
+        </div>
+        <div class="size-bar">
+          <span class="size-bar-label">크기</span>
+          <div class="size-dims">
+            <span class="size-dim"><span class="ax">W</span><span class="vl size-x">—</span><span class="un">mm</span></span>
+            <span class="size-dim"><span class="ax">D</span><span class="vl size-y">—</span><span class="un">mm</span></span>
+            <span class="size-dim"><span class="ax">H</span><span class="vl size-z">—</span><span class="un">mm</span></span>
+          </div>
+        </div>
+        <div class="toolbar">
+          <label class="file-btn">STL 선택<input type="file" class="slot-file-input" accept=".stl,.STL" /></label>
+          <button type="button" class="btn-slot-reset">뷰 리셋</button>
+          <span class="filename slot-file-label">파일 없음</span>
+        </div>`;
+      viewersRoot.appendChild(card);
+
+      const slot = {
+        id: `slot-${viewerSeq}`,
+        card,
+        dropZone: card.querySelector(".slot-drop-zone"),
+        canvasHost: card.querySelector(".slot-canvas-host"),
+        fileInput: card.querySelector(".slot-file-input"),
+        fileLabel: card.querySelector(".slot-file-label"),
+        sizeBar: card.querySelector(".size-bar"),
+        sizeX: card.querySelector(".size-x"),
+        sizeY: card.querySelector(".size-y"),
+        sizeZ: card.querySelector(".size-z"),
+        btnReset: card.querySelector(".btn-slot-reset"),
+        btnRemove: card.querySelector(".btn-remove-slot"),
+      };
+
+      initThreeForSlot(slot);
+      setupSlotClickOpenFile(slot);
+
+      slot.fileInput.addEventListener("change", () => {
+        const f = slot.fileInput.files?.[0];
+        if (f) loadSTLIntoSlot(slot, f);
+        slot.fileInput.value = "";
+      });
+      slot.btnReset.addEventListener("click", () => {
+        if (slot.mesh) slot.mesh.quaternion.identity();
+        slot.camera.position.copy(slot.initialCameraPos);
+        slot.camera.lookAt(0, 0, 0);
+      });
+      slot.btnRemove.addEventListener("click", () => removeViewerSlot(slot));
+
+      viewerSlots.push(slot);
+      return slot;
+    }
+
+    function removeViewerSlot(slot) {
+      const i = viewerSlots.indexOf(slot);
+      if (i < 0) return;
+      viewerSlots.splice(i, 1);
+      disposeSlot(slot);
+      slot.card.remove();
+      refreshAfterModelsChange();
+    }
+
+    function clearAllSlotsMeshes() {
+      viewerSlots.forEach(s => clearSlotMesh(s));
+      refreshAfterModelsChange();
+    }
+
+    function refreshAfterModelsChange() {
+      updatePlasterCalc();
+    }
+
+    const PLASTER_K = 1.1163;
+    const WATER_K   = 0.78141;
+
+    const plasterMargin  = document.getElementById("plaster-margin");
+    const plasterMarginOut = document.getElementById("plaster-margin-out");
+    const plasterVolManual = document.getElementById("plaster-vol-manual");
+
+    function roundUp10(n) { return Math.ceil(n / 10) * 10; }
+
+    function getPlasterCalcResult() {
+      const loadedModels = collectModelsWithGeometry();
+      let totalVolMm3 = 0;
+      if (loadedModels.length > 0) {
+        for (const m of loadedModels) totalVolMm3 += computeVolumeMm3(m.geometry);
+      } else {
+        const manualMm3 = parseFloat(plasterVolManual.value);
+        if (!manualMm3 || manualMm3 <= 0) return null;
+        totalVolMm3 = manualMm3;
+      }
+      const margin = parseInt(plasterMargin.value, 10);
+      const f = 1 + margin / 100;
+      const cc = totalVolMm3 / 1000;
+      const plaster = cc * PLASTER_K * f;
+      const water = cc * WATER_K * f;
+      const pRec = roundUp10(plaster);
+      const wRec = pRec * 0.70;
+      return {
+        volMm3: totalVolMm3,
+        volCc: cc,
+        margin,
+        plasterActual: Math.round(plaster),
+        plasterRec: pRec,
+        waterActual: Math.round(water),
+        waterRec: wRec,
+      };
+    }
+
+    function updateSaveButtonState() {
+      const btn = document.getElementById("btn-save-record");
+      if (btn) btn.disabled = getPlasterCalcResult() === null;
+    }
+
+    function getDefaultSaveName() {
+      const models = collectModelsWithGeometry();
+      if (models.length === 0) return "직접입력";
+      if (models.length === 1) return models[0].name.replace(/\.stl$/i, "") || models[0].name;
+      return models.map(m => m.name).join(", ");
+    }
+
+    let modalMode = "create";
+    let editingRecordId = null;
+
+    let modalRatioProgrammatic = false;
+
+    function modalWaterFromPlaster(plaster) {
+      return plaster * (PLASTER_WATER_RATIO.water / PLASTER_WATER_RATIO.plaster);
+    }
+
+    function modalPlasterFromWater(water) {
+      return water * (PLASTER_WATER_RATIO.plaster / PLASTER_WATER_RATIO.water);
+    }
+
+    function formatModalWaterDisplay(w) {
+      if (!Number.isFinite(w)) return "";
+      return w % 1 === 0 ? String(w) : String(Number(w.toFixed(1)));
+    }
+
+    function formatModalPlasterDisplay(p) {
+      if (!Number.isFinite(p)) return "";
+      return p % 1 === 0 ? String(Math.round(p)) : String(Number(p.toFixed(1)));
+    }
+
+    function setupModalRatioSync() {
+      const chk = document.getElementById("modal-ratio-sync");
+      const inpP = document.getElementById("modal-field-plaster");
+      const inpW = document.getElementById("modal-field-water");
+      if (!chk || !inpP || !inpW) return;
+
+      function syncWaterFromPlaster() {
+        if (modalRatioProgrammatic || !chk.checked) return;
+        const p = parseFloat(inpP.value);
+        if (!Number.isFinite(p) || p < 0) return;
+        modalRatioProgrammatic = true;
+        inpW.value = formatModalWaterDisplay(modalWaterFromPlaster(p));
+        modalRatioProgrammatic = false;
+      }
+
+      function syncPlasterFromWater() {
+        if (modalRatioProgrammatic || !chk.checked) return;
+        const w = parseFloat(inpW.value);
+        if (!Number.isFinite(w) || w < 0) return;
+        modalRatioProgrammatic = true;
+        inpP.value = formatModalPlasterDisplay(modalPlasterFromWater(w));
+        modalRatioProgrammatic = false;
+      }
+
+      inpP.addEventListener("input", syncWaterFromPlaster);
+      inpW.addEventListener("input", syncPlasterFromWater);
+
+      chk.addEventListener("change", () => {
+        if (!chk.checked) return;
+        const p = parseFloat(inpP.value);
+        const w = parseFloat(inpW.value);
+        modalRatioProgrammatic = true;
+        if (Number.isFinite(p) && p >= 0) {
+          inpW.value = formatModalWaterDisplay(modalWaterFromPlaster(p));
+        } else if (Number.isFinite(w) && w >= 0) {
+          inpP.value = formatModalPlasterDisplay(modalPlasterFromWater(w));
+        }
+        modalRatioProgrammatic = false;
+      });
+    }
+
+    let ratioPageSync = false;
+
+    function setupStandaloneRatioCalc() {
+      const inpP = document.getElementById("ratio-input-plaster");
+      const inpW = document.getElementById("ratio-input-water");
+      const btnClear = document.getElementById("ratio-calc-clear");
+      if (!inpP || !inpW) return;
+
+      function syncWaterFromPlaster() {
+        if (ratioPageSync) return;
+        const raw = inpP.value.trim();
+        if (raw === "") {
+          ratioPageSync = true;
+          inpW.value = "";
+          ratioPageSync = false;
+          return;
+        }
+        const p = parseFloat(raw);
+        if (!Number.isFinite(p) || p < 0) return;
+        ratioPageSync = true;
+        inpW.value = formatModalWaterDisplay(modalWaterFromPlaster(p));
+        ratioPageSync = false;
+      }
+
+      function syncPlasterFromWater() {
+        if (ratioPageSync) return;
+        const raw = inpW.value.trim();
+        if (raw === "") {
+          ratioPageSync = true;
+          inpP.value = "";
+          ratioPageSync = false;
+          return;
+        }
+        const w = parseFloat(raw);
+        if (!Number.isFinite(w) || w < 0) return;
+        ratioPageSync = true;
+        inpP.value = formatModalPlasterDisplay(modalPlasterFromWater(w));
+        ratioPageSync = false;
+      }
+
+      inpP.addEventListener("input", syncWaterFromPlaster);
+      inpW.addEventListener("input", syncPlasterFromWater);
+      btnClear?.addEventListener("click", () => {
+        inpP.value = "";
+        inpW.value = "";
+        inpP.focus();
+      });
+    }
+
+    function openRecordModal() {
+      const el = document.getElementById("record-modal");
+      if (el) {
+        el.hidden = false;
+        document.body.style.overflow = "hidden";
+      }
+    }
+
+    function closeRecordModal() {
+      const el = document.getElementById("record-modal");
+      if (el) {
+        el.hidden = true;
+        document.body.style.overflow = "";
+      }
+      editingRecordId = null;
+      modalMode = "create";
+    }
+
+    function openSaveModal() {
+      const calc = getPlasterCalcResult();
+      if (!calc) {
+        alert("저장할 계산 결과가 없습니다.");
+        return;
+      }
+      modalMode = "create";
+      editingRecordId = null;
+      document.getElementById("record-modal-title").textContent = "저장";
+      document.getElementById("modal-btn-primary").textContent = "저장 완료";
+      document.getElementById("modal-field-name").value = getDefaultSaveName();
+      document.getElementById("modal-field-plaster").value = String(calc.plasterRec);
+      document.getElementById("modal-field-water").value =
+        calc.waterRec % 1 === 0 ? String(calc.waterRec) : String(Number(calc.waterRec.toFixed(1)));
+      document.getElementById("modal-field-memo").value = "";
+      const ratioChk = document.getElementById("modal-ratio-sync");
+      if (ratioChk) ratioChk.checked = true;
+      openRecordModal();
+      document.getElementById("modal-field-name")?.focus();
+    }
+
+    function openEditModal(record) {
+      modalMode = "edit";
+      editingRecordId = record.id;
+      document.getElementById("record-modal-title").textContent = "기록 수정";
+      document.getElementById("modal-btn-primary").textContent = "수정 완료";
+      document.getElementById("modal-field-name").value = record.name || "";
+      document.getElementById("modal-field-plaster").value = String(record.plaster ?? "");
+      document.getElementById("modal-field-water").value = String(record.water ?? "");
+      document.getElementById("modal-field-memo").value = record.memo || "";
+      const ratioChk = document.getElementById("modal-ratio-sync");
+      if (ratioChk) ratioChk.checked = true;
+      openRecordModal();
+      document.getElementById("modal-field-name")?.focus();
+    }
+
+    function readModalFields() {
+      const plaster = parseFloat(document.getElementById("modal-field-plaster").value);
+      const water = parseFloat(document.getElementById("modal-field-water").value);
+      return {
+        name: (document.getElementById("modal-field-name").value || "").trim() || "이름 없음",
+        memo: (document.getElementById("modal-field-memo").value || "").trim(),
+        plaster: Number.isFinite(plaster) ? plaster : 0,
+        water: Number.isFinite(water) ? water : 0,
+      };
+    }
+
+    async function commitRecordModal() {
+      const fields = readModalFields();
+      if (modalMode === "create") {
+        const slot = viewerSlots.find(s => s.mesh && s.renderer);
+        const thumbnail = slot ? captureSlotThumbnail80(slot) : makePlaceholderThumbnail();
+        const id = Date.now();
+        const record = {
+          id,
+          date: formatRecordDate(new Date(id)),
+          name: fields.name,
+          memo: fields.memo,
+          plaster: fields.plaster,
+          water: fields.water,
+          thumbnail,
+        };
+        setRecordsLoading(true, "저장 중…");
+        try {
+          await ensureRecordsLoaded(true);
+          const records = [...(recordsRemoteCache || [])];
+          records.push(record);
+          await workerPutRecords(records);
+          closeRecordModal();
+          await renderRecordsList({ forceFetch: false });
+        } catch (e) {
+          alert(`저장에 실패했습니다.\n${e?.message || e}`);
+        } finally {
+          setRecordsLoading(false);
+        }
+        return;
+      }
+      if (modalMode === "edit" && editingRecordId != null) {
+        setRecordsLoading(true, "수정 반영 중…");
+        try {
+          await ensureRecordsLoaded(true);
+          const records = [...(recordsRemoteCache || [])];
+          const rec = records.find(x => x.id === editingRecordId);
+          if (!rec) {
+            closeRecordModal();
+            return;
+          }
+          rec.name = fields.name;
+          rec.memo = fields.memo;
+          rec.plaster = fields.plaster;
+          rec.water = fields.water;
+          await workerPutRecords(records);
+          closeRecordModal();
+          await renderRecordsList({ forceFetch: false });
+        } catch (e) {
+          alert(`수정에 실패했습니다.\n${e?.message || e}`);
+        } finally {
+          setRecordsLoading(false);
+        }
+      }
+    }
+
+    async function renderRecordsList(opts = {}) {
+      const forceFetch = opts.forceFetch === true;
+      const listEl = document.getElementById("records-list");
+      const emptyEl = document.getElementById("records-empty");
+      const countEl = document.getElementById("records-count");
+      const searchEl = document.getElementById("records-search");
+      const sortEl = document.getElementById("records-sort");
+      if (!listEl || !emptyEl) return;
+
+      const needsNetwork = forceFetch || !recordsLoadedOnce;
+      if (needsNetwork) setRecordsLoading(true, "불러오는 중…");
+
+      try {
+        await ensureRecordsLoaded(forceFetch);
+      } catch (e) {
+        emptyEl.hidden = false;
+        emptyEl.textContent = `기록을 불러오지 못했습니다. (${e?.message || e})`;
+        listEl.innerHTML = "";
+        if (countEl) {
+          countEl.hidden = true;
+          countEl.textContent = "";
+        }
+        return;
+      } finally {
+        if (needsNetwork) setRecordsLoading(false);
+      }
+
+      const all = recordsRemoteCache || [];
+      const query = searchEl?.value ?? "";
+      const sortKey = sortEl?.value ?? "date-desc";
+
+      let rows = filterRecordsBySearch(all, query);
+      rows = sortRecordsList(rows, sortKey);
+
+      if (countEl) {
+        if (all.length === 0) {
+          countEl.hidden = true;
+          countEl.textContent = "";
+        } else {
+          countEl.hidden = false;
+          const q = String(query).trim();
+          countEl.textContent = q
+            ? `전체 ${all.length}건 · 검색 결과 ${rows.length}건`
+            : `총 ${all.length}건`;
+        }
+      }
+
+      if (all.length === 0) {
+        emptyEl.hidden = false;
+        emptyEl.textContent = "저장된 기록이 없습니다.";
+        listEl.innerHTML = "";
+        return;
+      }
+
+      if (rows.length === 0) {
+        emptyEl.hidden = false;
+        emptyEl.textContent = "검색·정렬 조건에 맞는 기록이 없습니다.";
+        listEl.innerHTML = "";
+        return;
+      }
+
+      emptyEl.hidden = true;
+      listEl.innerHTML = rows.map(r => buildRecordCardHtml(r, query)).join("");
+    }
+
+    function switchTab(tab) {
+      const calcBtn = document.getElementById("tab-btn-calc");
+      const storeBtn = document.getElementById("tab-btn-store");
+      const panelCalc = document.getElementById("panel-calc");
+      const panelStore = document.getElementById("panel-store");
+      const isCalc = tab === "calc";
+      if (calcBtn) {
+        calcBtn.classList.toggle("active", isCalc);
+        calcBtn.setAttribute("aria-selected", isCalc ? "true" : "false");
+      }
+      if (storeBtn) {
+        storeBtn.classList.toggle("active", !isCalc);
+        storeBtn.setAttribute("aria-selected", !isCalc ? "true" : "false");
+      }
+      if (panelCalc) panelCalc.hidden = !isCalc;
+      if (panelStore) panelStore.hidden = isCalc;
+      if (!isCalc) void renderRecordsList({ forceFetch: true });
+    }
+
+    function updatePlasterCalc() {
+      const loadedModels = collectModelsWithGeometry();
+
+      if (loadedModels.length > 0) {
+        let sumMm3 = 0;
+        for (const m of loadedModels) sumMm3 += computeVolumeMm3(m.geometry);
+        plasterVolManual.value = Math.round(sumMm3);
+      }
+
+      const result = getPlasterCalcResult();
+
+      if (!result) {
+        document.getElementById("plaster-vol-display").textContent = "—";
+        document.getElementById("plaster-vol-cc").textContent = "— cc";
+        document.getElementById("p-plaster-actual").innerHTML = `—<small class="p-unit"> g</small>`;
+        document.getElementById("p-water-actual").innerHTML   = `—<small class="p-unit"> mL</small>`;
+        document.getElementById("p-plaster-rec").textContent  = "—";
+        document.getElementById("p-water-rec").textContent    = "—";
+        document.getElementById("plaster-breakdown").hidden = true;
+        plasterMarginOut.textContent = "+" + plasterMargin.value + "%";
+        updateSaveButtonState();
+        return;
+      }
+
+      const margin = result.margin;
+      const f = 1 + margin / 100;
+      const totalVolMm3 = result.volMm3;
+      const cc = result.volCc;
+      const pRound = result.plasterActual;
+      const wRound = result.waterActual;
+      const pRec = result.plasterRec;
+      const wRec = result.waterRec;
+
+      document.getElementById("plaster-vol-display").textContent = formatNum(totalVolMm3, 1);
+      document.getElementById("plaster-vol-cc").textContent      = formatNum(cc, 2) + " cc";
+
+      document.getElementById("p-plaster-actual").innerHTML = `${pRound.toLocaleString()}<small class="p-unit"> g</small>`;
+      document.getElementById("p-water-actual").innerHTML   = `${wRound.toLocaleString()}<small class="p-unit"> mL</small>`;
+      document.getElementById("p-plaster-rec").textContent  = pRec.toLocaleString();
+      document.getElementById("p-water-rec").textContent    = wRec % 1 === 0 ? wRec.toLocaleString() : wRec.toFixed(1);
+
+      const breakdownEl = document.getElementById("plaster-breakdown");
+      if (loadedModels.length > 1) {
+        const rows = loadedModels.map((m, i) => {
+          const vMm3 = computeVolumeMm3(m.geometry);
+          const vCc  = vMm3 / 1000;
+          const mp   = Math.round(vCc * PLASTER_K * f);
+          const mw   = Math.round(vCc * WATER_K   * f);
+          const mpR  = roundUp10(vCc * PLASTER_K * f);
+          const mwR  = roundUp10(vCc * WATER_K   * f);
+          const name = m.name.replace(/\.stl$/i, "");
+          return `<div class="p-breakdown-row">
+            <div class="p-breakdown-name" title="${name}">뷰어 ${i+1} · ${name}</div>
+            <div class="p-breakdown-vals">
+              <span class="p-bv-item">석고 <strong>${mp.toLocaleString()}</strong><em>g</em> <span class="p-bv-rec">(→${mpR.toLocaleString()})</span></span>
+              <span class="p-bv-sep">·</span>
+              <span class="p-bv-item">물 <strong>${mw.toLocaleString()}</strong><em>mL</em> <span class="p-bv-rec">(→${mwR.toLocaleString()})</span></span>
+            </div>
+          </div>`;
+        }).join("");
+        breakdownEl.innerHTML = `<div class="p-breakdown-wrap"><div class="p-breakdown-title">뷰어별 개별값</div>${rows}</div>`;
+        breakdownEl.hidden = false;
+      } else {
+        breakdownEl.hidden = true;
+      }
+
+      plasterMarginOut.textContent = "+" + margin + "%";
+      updateSaveButtonState();
+    }
+
+    plasterMargin.addEventListener("input", () => {
+      plasterMarginOut.textContent = "+" + plasterMargin.value + "%";
+      updatePlasterCalc();
+    });
+
+    plasterVolManual.addEventListener("input", updatePlasterCalc);
+
+    btnClearAll?.addEventListener("click", () => clearAllSlotsMeshes());
+
+    document.getElementById("tab-btn-calc")?.addEventListener("click", () => switchTab("calc"));
+    document.getElementById("tab-btn-store")?.addEventListener("click", () => switchTab("store"));
+
+    document.getElementById("btn-save-record")?.addEventListener("click", openSaveModal);
+
+    document.getElementById("modal-btn-primary")?.addEventListener("click", () => void commitRecordModal());
+    document.getElementById("modal-btn-cancel")?.addEventListener("click", closeRecordModal);
+    document.getElementById("record-modal")?.addEventListener("click", e => {
+      if (e.target.id === "record-modal") closeRecordModal();
+    });
+    document.addEventListener("keydown", e => {
+      const modal = document.getElementById("record-modal");
+      if (e.key === "Escape" && modal && !modal.hidden) closeRecordModal();
+    });
+
+    document.getElementById("records-list")?.addEventListener("click", e => {
+      const editBtn = e.target.closest(".btn-record-edit");
+      const delBtn = e.target.closest(".btn-record-delete");
+      const card = e.target.closest(".record-card");
+      if (!card) return;
+      const id = Number(card.dataset.id);
+      if (editBtn) {
+        const rec = (recordsRemoteCache || []).find(x => x.id === id);
+        if (rec) openEditModal(rec);
+        return;
+      }
+      if (delBtn) {
+        void (async () => {
+          if (!confirm("이 기록을 삭제할까요?")) return;
+          setRecordsLoading(true, "삭제 중…");
+          try {
+            await ensureRecordsLoaded(true);
+            const next = (recordsRemoteCache || []).filter(x => x.id !== id);
+            await workerPutRecords(next);
+            await renderRecordsList({ forceFetch: false });
+          } catch (err) {
+            alert(`삭제에 실패했습니다.\n${err?.message || err}`);
+          } finally {
+            setRecordsLoading(false);
+          }
+        })();
+      }
+    });
+
+    setupModalRatioSync();
+    setupStandaloneRatioCalc();
+    setupMainAddDrop();
+    document.getElementById("records-search")?.addEventListener("input", () => void renderRecordsList({ forceFetch: false }));
+    document.getElementById("records-sort")?.addEventListener("change", () => void renderRecordsList({ forceFetch: false }));
+    void renderRecordsList({ forceFetch: true });
+
+    async function initViewerFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      const modelName = params.get("model");
+      if (!modelName || !String(modelName).trim()) return;
+
+      const slug = sanitizeModelParam(modelName);
+      if (!slug) {
+        document.documentElement.setAttribute("data-viewer", "error");
+        return;
+      }
+
+      try {
+        const url = buildRawStlUrl(slug);
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const buf = await res.arrayBuffer();
+        if (!buf || buf.byteLength === 0) throw new Error("empty body");
+
+        document.documentElement.setAttribute("data-viewer", "app");
+        const slot = createViewerSlot();
+        await loadSTLIntoSlotFromArrayBuffer(slot, buf, `${slug}.stl`);
+      } catch (e) {
+        console.error(e);
+        document.documentElement.setAttribute("data-viewer", "error");
+      }
+    }
+
+    initViewerFromQuery();
+  </script>
+</body>
+</html>
