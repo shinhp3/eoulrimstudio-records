@@ -42,7 +42,6 @@
       <div class="main-drop-inner">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
         <span><strong>STL을 여기에 드롭</strong>하거나 클릭해 선택</span>
-        <span class="main-drop-sub">여러 파일을 한 번에 올리면 아래에 뷰 카드가 순서대로 생깁니다.</span>
       </div>
     </div>
     <div id="viewers-root"></div>
@@ -65,7 +64,7 @@
               id="plaster-vol-manual"
               min="0"
               step="1"
-              placeholder="체적 직접 입력란"
+              placeholder="체적 입력란"
               inputmode="numeric"
               autocomplete="off"
             />
@@ -77,63 +76,54 @@
           <input type="range" id="plaster-margin" min="0" max="30" step="5" value="10" />
           <span class="plaster-margin-val" id="plaster-margin-out">+10%</span>
         </div>
-        <div class="plaster-results">
-          <div class="plaster-box">
-            <div class="p-label">석고 (합산)</div>
-            <div class="p-actual-row">
-              <input type="number" id="plaster-input-plaster" class="p-actual-input" min="0" step="any" inputmode="decimal" placeholder="g · 역산 입력" autocomplete="off" aria-describedby="plaster-note" />
-              <span class="p-unit-inline">g</span>
+        <div class="plaster-mix-card">
+          <div class="ratio-calc-grid">
+            <div class="ratio-calc-cell">
+              <span class="ratio-calc-label">석고 (합산)</span>
+              <div class="plaster-mix-hero-row">
+                <div class="plaster-mix-hero" id="p-plaster-hero" aria-live="polite">—</div>
+                <div class="plaster-mix-rec plaster-mix-rec--beside">
+                  추천값 → <span id="p-plaster-rec">—</span><span class="plaster-mix-rec-unit"> g</span>
+                </div>
+              </div>
+              <div class="plaster-mix-reverse">
+                <span class="plaster-mix-reverse-hint">역산 입력</span>
+                <div class="ratio-calc-input-wrap plaster-mix-reverse-wrap">
+                  <input type="number" id="plaster-input-plaster" class="ratio-calc-input plaster-mix-reverse-input" min="0" step="any" inputmode="decimal" placeholder="g" autocomplete="off" aria-describedby="plaster-note" />
+                  <span class="ratio-calc-unit">g</span>
+                </div>
+              </div>
             </div>
-            <div class="p-recommend">추천값 → <span id="p-plaster-rec">—</span> g</div>
+            <div class="ratio-calc-connector" aria-hidden="true">
+              <span class="ratio-calc-icon">⇄</span>
+              <span class="ratio-calc-ratio-tag">10 : 7</span>
+            </div>
+            <div class="ratio-calc-cell">
+              <span class="ratio-calc-label">물 (합산)</span>
+              <div class="plaster-mix-hero-row">
+                <div class="plaster-mix-hero" id="p-water-hero" aria-live="polite">—</div>
+                <div class="plaster-mix-rec plaster-mix-rec--beside">
+                  추천값 → <span id="p-water-rec">—</span><span class="plaster-mix-rec-unit"> mL</span>
+                </div>
+              </div>
+              <div class="plaster-mix-reverse">
+                <span class="plaster-mix-reverse-hint">역산 입력</span>
+                <div class="ratio-calc-input-wrap plaster-mix-reverse-wrap">
+                  <input type="number" id="plaster-input-water" class="ratio-calc-input plaster-mix-reverse-input" min="0" step="any" inputmode="decimal" placeholder="mL" autocomplete="off" aria-describedby="plaster-note" />
+                  <span class="ratio-calc-unit">mL</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="plaster-box">
-            <div class="p-label">물 (합산)</div>
-            <div class="p-actual-row">
-              <input type="number" id="plaster-input-water" class="p-actual-input" min="0" step="any" inputmode="decimal" placeholder="mL · 역산 입력" autocomplete="off" aria-describedby="plaster-note" />
-              <span class="p-unit-inline">mL</span>
-            </div>
-            <div class="p-recommend">추천값 → <span id="p-water-rec">—</span> mL</div>
+          <div class="ratio-calc-actions">
+            <button type="button" id="plaster-mix-clear" class="ratio-calc-clear">입력 초기화</button>
           </div>
         </div>
         <div id="plaster-breakdown" hidden></div>
 
         <p id="plaster-note" class="plaster-note">
-          물:석고 = 70:100 기준 · 실측 2회 평균 계수 적용 (석고 ×1.1163 / 물 ×0.78141)<br>
-          추천값 물량은 <em>석고 추천값 × 0.70</em>으로 비율 일치 보장합니다.<br>
-          <span id="plaster-note-reverse">STL 없이 직접 입력할 때는 체적·석고·물 중 하나만 바꿔도 나머지가 같은 여유분 기준으로 맞춰집니다.</span>
+          물:석고 = 70:100 기준 · 실측 2회 평균 계수 적용 (석고 ×1.1163 / 물 ×0.78141)
         </p>
-      </div>
-    </section>
-
-    <section class="ratio-calc" aria-labelledby="ratio-calc-title">
-      <div class="ratio-calc-head">
-        <h2 id="ratio-calc-title">석고·물 비율 계산</h2>
-        <p class="ratio-calc-lead">석고 10 : 물 7 비율입니다. <strong>석고</strong> 또는 <strong>물</strong> 중 하나만 입력하면 나머지가 자동으로 맞춰집니다.</p>
-      </div>
-      <div class="ratio-calc-card">
-        <div class="ratio-calc-grid">
-          <div class="ratio-calc-cell">
-            <label class="ratio-calc-label" for="ratio-input-plaster">석고량</label>
-            <div class="ratio-calc-input-wrap">
-              <input type="number" id="ratio-input-plaster" class="ratio-calc-input" min="0" step="any" inputmode="decimal" placeholder="g 입력" autocomplete="off" />
-              <span class="ratio-calc-unit">g</span>
-            </div>
-          </div>
-          <div class="ratio-calc-connector" aria-hidden="true">
-            <span class="ratio-calc-icon">⇄</span>
-            <span class="ratio-calc-ratio-tag">10 : 7</span>
-          </div>
-          <div class="ratio-calc-cell">
-            <label class="ratio-calc-label" for="ratio-input-water">물량</label>
-            <div class="ratio-calc-input-wrap">
-              <input type="number" id="ratio-input-water" class="ratio-calc-input" min="0" step="any" inputmode="decimal" placeholder="mL 입력" autocomplete="off" />
-              <span class="ratio-calc-unit">mL</span>
-            </div>
-          </div>
-        </div>
-        <div class="ratio-calc-actions">
-          <button type="button" id="ratio-calc-clear" class="ratio-calc-clear">입력 초기화</button>
-        </div>
       </div>
     </section>
     </div>
@@ -200,28 +190,15 @@
       <div class="modal-scroll">
       <div id="modal-save-preview-wrap" class="modal-save-preview-wrap">
         <span class="modal-preview-section-label">썸네일</span>
-        <div id="modal-thumb-mode-row" class="modal-thumb-mode-row" role="tablist" aria-label="썸네일 만들기 방식">
-          <button type="button" id="modal-thumb-tab-stl" class="modal-thumb-mode-btn active" role="tab" aria-selected="true">STL 화면 캡처</button>
-          <button type="button" id="modal-thumb-tab-draw" class="modal-thumb-mode-btn" role="tab" aria-selected="false">그림판</button>
+        <div id="modal-thumb-mode-row" class="modal-thumb-mode-row" role="group" aria-label="썸네일 만들기">
+          <button type="button" id="modal-thumb-tab-stl" class="modal-thumb-mode-btn active" aria-pressed="true">STL 화면 캡처</button>
+          <button type="button" id="modal-thumb-open-draw" class="modal-thumb-open-draw-btn" aria-pressed="false">그림 그리기</button>
         </div>
         <div id="modal-thumb-pane-stl" class="modal-thumb-pane-stl">
-          <div id="modal-preview-canvas-host" class="modal-preview-canvas-host" aria-label="저장용 3D 미리보기"></div>
-          <p id="modal-save-preview-hint" class="modal-save-preview-hint"></p>
-          <button type="button" id="modal-thumb-refresh-stl" class="modal-thumb-refresh-stl">현재 각도로 썸네일 적용</button>
-        </div>
-        <div id="modal-thumb-pane-draw" class="modal-thumb-pane-draw" hidden>
-          <div class="modal-draw-toolbar">
-            <button type="button" id="modal-draw-clear">캔버스 지우기</button>
-            <label class="modal-draw-color-label">색<input type="color" id="modal-draw-color" value="#1e293b" /></label>
+          <div id="modal-thumb-stl-frame" class="modal-thumb-stl-frame">
+            <div id="modal-preview-canvas-host" class="modal-preview-canvas-host" aria-label="저장용 3D 미리보기"></div>
+            <p class="modal-thumb-frame-caption">실제 썸네일 크기 <strong>200×200px</strong></p>
           </div>
-          <div class="modal-draw-canvas-wrap">
-            <canvas id="modal-draw-canvas" width="200" height="200" aria-label="썸네일 손그림"></canvas>
-          </div>
-          <p class="modal-draw-hint">마우스나 손가락으로 그리면 저장 시 이 이미지가 썸네일로 들어갑니다.</p>
-        </div>
-        <div class="modal-thumb-final-row">
-          <span class="modal-thumb-final-label">저장에 쓰일 미리보기</span>
-          <img id="modal-thumb-final-preview" class="modal-thumb-final-preview" alt="" width="80" height="80" hidden />
         </div>
       </div>
       <div id="modal-edit-thumb-wrap" class="modal-edit-thumb-wrap" hidden>
@@ -234,7 +211,7 @@
       <div class="modal-fields">
         <label class="modal-field">
           <span class="modal-label">이름</span>
-          <input type="text" id="modal-field-name" class="modal-input" maxlength="200" autocomplete="off" />
+          <input type="text" id="modal-field-name" class="modal-input" maxlength="200" autocomplete="off" placeholder="" />
         </label>
         <div class="modal-metrics-row">
           <label class="modal-field">
@@ -251,13 +228,36 @@
             <input type="checkbox" id="modal-ratio-sync" checked />
             <span>석고 10 : 물 7 비율 자동 적용</span>
           </label>
-          <p id="modal-ratio-hint" class="modal-ratio-hint">켜 두면 석고량 또는 물량을 바꿀 때 다른 쪽이 같은 비율로 맞춰집니다. 끄면 각각 독립적으로 입력할 수 있습니다.</p>
         </div>
         <label class="modal-field">
           <span class="modal-label">메모</span>
           <textarea id="modal-field-memo" class="modal-textarea" rows="3" maxlength="500"></textarea>
         </label>
       </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-draw-overlay" class="modal-draw-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-draw-title" hidden>
+    <div class="modal-draw-overlay-panel">
+      <div class="modal-draw-overlay-head">
+        <h3 id="modal-draw-title" class="modal-draw-overlay-title">썸네일 그림판</h3>
+        <button type="button" id="modal-draw-close-x" class="modal-draw-close-x" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-draw-toolbar">
+        <button type="button" id="modal-draw-clear">캔버스 지우기</button>
+        <label class="modal-draw-color-label">색<input type="color" id="modal-draw-color" value="#1e293b" /></label>
+      </div>
+      <div class="modal-thumb-draw-frame">
+        <div class="modal-draw-canvas-wrap modal-draw-canvas-wrap--overlay">
+          <canvas id="modal-draw-canvas" width="200" height="200" aria-label="썸네일 손그림"></canvas>
+        </div>
+        <p class="modal-thumb-frame-caption">실제 썸네일 크기 <strong>200×200px</strong></p>
+      </div>
+      <p class="modal-draw-hint">「이 그림으로 적용」 후 저장하면 썸네일로 쓰입니다.</p>
+      <div class="modal-draw-overlay-actions">
+        <button type="button" id="modal-draw-cancel" class="modal-btn modal-btn-secondary modal-btn-header">닫기</button>
+        <button type="button" id="modal-draw-apply" class="modal-btn modal-btn-primary modal-btn-header">이 그림으로 적용</button>
       </div>
     </div>
   </div>
@@ -725,11 +725,13 @@
     }
 
     let modalPreview = null;
+    /** 저장 썸네일 PNG 한 변 픽셀 (캡처·그림판과 동일) */
+    const THUMB_SAVE_PX = 200;
     /** @type {"stl" | "draw"} */
     let modalThumbMode = "stl";
     let modalDrawAbort = null;
 
-    function capturePreviewAsDataURL(preview, size = 200) {
+    function capturePreviewAsDataURL(preview, size = THUMB_SAVE_PX) {
       if (!preview?.renderer || !preview?.camera || !preview?.scene || !preview?.mesh) {
         return makePlaceholderThumbnail();
       }
@@ -863,12 +865,6 @@
 
     function disposeModalPreview() {
       if (!modalPreview) return;
-      if (modalPreview._thumbInteractCleanup) {
-        try {
-          modalPreview._thumbInteractCleanup();
-        } catch (_) { /* noop */ }
-        modalPreview._thumbInteractCleanup = null;
-      }
       if (modalPreview._raf) cancelAnimationFrame(modalPreview._raf);
       modalPreview._raf = null;
       if (modalPreview._resizeObs) {
@@ -902,73 +898,58 @@
       }
     }
 
-    function refreshModalThumbFinalPreview() {
-      const img = document.getElementById("modal-thumb-final-preview");
-      if (!img) return;
-      let url = "";
-      if (modalThumbMode === "stl" && modalPreview?.mesh) {
-        url = capturePreviewAsDataURL(modalPreview, 200);
-      } else {
-        const canvas = document.getElementById("modal-draw-canvas");
-        url = canvas ? canvas.toDataURL("image/png") : makePlaceholderThumbnail();
+    function primeModalDrawCanvasBlank() {
+      const canvas = document.getElementById("modal-draw-canvas");
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function closeModalDrawOverlay() {
+      const ov = document.getElementById("modal-draw-overlay");
+      if (ov) ov.hidden = true;
+    }
+
+    function openModalDrawOverlay() {
+      const ov = document.getElementById("modal-draw-overlay");
+      if (!ov) return;
+      if (!modalDrawAbort) {
+        attachModalDrawInteraction();
       }
-      img.src = url;
-      img.hidden = false;
+      ov.hidden = false;
     }
 
     function getModalThumbnailDataUrlForCommit() {
       if (modalThumbMode === "stl" && modalPreview?.mesh) {
-        return capturePreviewAsDataURL(modalPreview, 200);
+        return capturePreviewAsDataURL(modalPreview, THUMB_SAVE_PX);
       }
       const canvas = document.getElementById("modal-draw-canvas");
       if (canvas) return canvas.toDataURL("image/png");
       return makePlaceholderThumbnail();
     }
 
-    function setModalThumbTab(mode) {
-      modalThumbMode = mode === "draw" ? "draw" : "stl";
-      const paneStl = document.getElementById("modal-thumb-pane-stl");
-      const paneDraw = document.getElementById("modal-thumb-pane-draw");
+    function updateThumbnailModeUi() {
+      const hasSlot = !!viewerSlots.find(s => s.mesh && s.geometry);
       const tabStl = document.getElementById("modal-thumb-tab-stl");
-      const tabDraw = document.getElementById("modal-thumb-tab-draw");
-      if (!paneStl || !paneDraw || !tabStl || !tabDraw) return;
-      const stlOn = modalThumbMode === "stl";
-      paneStl.hidden = !stlOn;
-      paneDraw.hidden = stlOn;
-      tabStl.classList.toggle("active", stlOn);
-      tabDraw.classList.toggle("active", !stlOn);
-      tabStl.setAttribute("aria-selected", stlOn ? "true" : "false");
-      tabDraw.setAttribute("aria-selected", !stlOn ? "true" : "false");
-      refreshModalThumbFinalPreview();
-    }
-
-    function attachModalPreviewThumbRefresh(preview) {
-      const cel = preview?.renderer?.domElement;
-      if (!cel) return () => {};
-      let timer = null;
-      function schedule() {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          if (modalThumbMode === "stl") refreshModalThumbFinalPreview();
-        }, 160);
+      const btnDraw = document.getElementById("modal-thumb-open-draw");
+      if (tabStl) {
+        tabStl.disabled = !hasSlot;
+        tabStl.classList.toggle("active", modalThumbMode === "stl");
+        tabStl.setAttribute("aria-pressed", modalThumbMode === "stl" ? "true" : "false");
       }
-      cel.addEventListener("mouseup", schedule);
-      cel.addEventListener("touchend", schedule, { passive: true });
-      return () => {
-        cel.removeEventListener("mouseup", schedule);
-        cel.removeEventListener("touchend", schedule);
-        clearTimeout(timer);
-      };
+      if (btnDraw) {
+        btnDraw.classList.toggle("active", modalThumbMode === "draw");
+        btnDraw.setAttribute("aria-pressed", modalThumbMode === "draw" ? "true" : "false");
+      }
     }
 
-    function initModalDrawCanvas() {
+    function attachModalDrawInteraction() {
       disposeModalDraw();
       const canvas = document.getElementById("modal-draw-canvas");
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       modalDrawAbort = new AbortController();
       const sig = { signal: modalDrawAbort.signal };
@@ -1022,7 +1003,6 @@
       function endStroke() {
         if (!drawing) return;
         drawing = false;
-        refreshModalThumbFinalPreview();
       }
 
       canvas.addEventListener("pointerup", endStroke, sig);
@@ -1031,35 +1011,18 @@
     }
 
     function prepareSaveModalThumbnailUi() {
+      closeModalDrawOverlay();
       disposeModalDraw();
-      initModalDrawCanvas();
-      const hasSlot = !!viewerSlots.find(s => s.mesh && s.geometry);
-      const tabStl = document.getElementById("modal-thumb-tab-stl");
-      const refreshBtn = document.getElementById("modal-thumb-refresh-stl");
-      if (tabStl) tabStl.disabled = !hasSlot;
-      if (refreshBtn) refreshBtn.disabled = !hasSlot;
-      setModalThumbTab(hasSlot ? "stl" : "draw");
+      primeModalDrawCanvasBlank();
+      modalThumbMode = "stl";
+      updateThumbnailModeUi();
     }
 
     function syncSaveModalPreviewUI(hasModel) {
-      const hint = document.getElementById("modal-save-preview-hint");
+      const frame = document.getElementById("modal-thumb-stl-frame");
       const host = document.getElementById("modal-preview-canvas-host");
-      if (!host) return;
-      if (hasModel) {
-        host.hidden = false;
-        if (hint) {
-          hint.hidden = false;
-          hint.textContent =
-            "메인 뷰어와 같은 모델입니다. 각도를 맞춘 뒤 「현재 각도로 썸네일 적용」을 누르거나, 상단 탭에서 그림판을 선택할 수 있습니다. 드래그·휠·핀치로 조절합니다.";
-        }
-      } else {
-        host.hidden = true;
-        if (hint) {
-          hint.hidden = false;
-          hint.textContent =
-            "불러온 STL이 없습니다. 「그림판」 탭에서 썸네일을 직접 그리거나, 나중에 STL을 불러와 화면을 캡처해 저장할 수 있습니다.";
-        }
-      }
+      if (!frame || !host) return;
+      frame.hidden = !hasModel;
     }
 
     function setupModalPreviewForSave() {
@@ -1076,23 +1039,29 @@
       syncSaveModalPreviewUI(true);
       host.innerHTML = "";
 
-      const w = Math.max(host.clientWidth, 200);
-      const h = Math.max(host.clientHeight, 168);
+      function readSquareSide() {
+        const cw = host.clientWidth;
+        const ch = host.clientHeight;
+        const m = Math.min(cw, ch);
+        return Math.max(m > 0 ? m : THUMB_SAVE_PX, 160);
+      }
+
+      const side = readSquareSide();
 
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0xf0f4ff);
-      const camera = new THREE.PerspectiveCamera(45, w / h, slot.camera.near, slot.camera.far);
+      const camera = new THREE.PerspectiveCamera(45, 1, slot.camera.near, slot.camera.far);
       camera.position.copy(slot.camera.position);
       camera.quaternion.copy(slot.camera.quaternion);
       camera.fov = slot.camera.fov;
       camera.zoom = slot.camera.zoom;
       camera.near = slot.camera.near;
       camera.far = slot.camera.far;
-      camera.aspect = w / h;
+      camera.aspect = 1;
       camera.updateProjectionMatrix();
 
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-      renderer.setSize(w, h);
+      renderer.setSize(side, side);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       host.appendChild(renderer.domElement);
 
@@ -1123,16 +1092,16 @@
       };
 
       bindPreviewOrbitControls(modalPreview);
-      modalPreview._thumbInteractCleanup = attachModalPreviewThumbRefresh(modalPreview);
       loopModalPreview();
 
       const ro = new ResizeObserver(() => {
         if (!modalPreview?.host || !modalPreview.renderer) return;
         const hw = Math.max(modalPreview.host.clientWidth, 2);
         const hh = Math.max(modalPreview.host.clientHeight, 2);
-        modalPreview.camera.aspect = hw / hh;
+        const s = Math.max(Math.min(hw, hh), 160);
+        modalPreview.camera.aspect = 1;
         modalPreview.camera.updateProjectionMatrix();
-        modalPreview.renderer.setSize(hw, hh);
+        modalPreview.renderer.setSize(s, s);
       });
       ro.observe(host);
       modalPreview._resizeObs = ro;
@@ -1597,55 +1566,6 @@
       });
     }
 
-    let ratioPageSync = false;
-
-    function setupStandaloneRatioCalc() {
-      const inpP = document.getElementById("ratio-input-plaster");
-      const inpW = document.getElementById("ratio-input-water");
-      const btnClear = document.getElementById("ratio-calc-clear");
-      if (!inpP || !inpW) return;
-
-      function syncWaterFromPlaster() {
-        if (ratioPageSync) return;
-        const raw = inpP.value.trim();
-        if (raw === "") {
-          ratioPageSync = true;
-          inpW.value = "";
-          ratioPageSync = false;
-          return;
-        }
-        const p = parseFloat(raw);
-        if (!Number.isFinite(p) || p < 0) return;
-        ratioPageSync = true;
-        inpW.value = formatModalWaterDisplay(modalWaterFromPlaster(p));
-        ratioPageSync = false;
-      }
-
-      function syncPlasterFromWater() {
-        if (ratioPageSync) return;
-        const raw = inpW.value.trim();
-        if (raw === "") {
-          ratioPageSync = true;
-          inpP.value = "";
-          ratioPageSync = false;
-          return;
-        }
-        const w = parseFloat(raw);
-        if (!Number.isFinite(w) || w < 0) return;
-        ratioPageSync = true;
-        inpP.value = formatModalPlasterDisplay(modalPlasterFromWater(w));
-        ratioPageSync = false;
-      }
-
-      inpP.addEventListener("input", syncWaterFromPlaster);
-      inpW.addEventListener("input", syncPlasterFromWater);
-      btnClear?.addEventListener("click", () => {
-        inpP.value = "";
-        inpW.value = "";
-        inpP.focus();
-      });
-    }
-
     function openRecordModal() {
       const el = document.getElementById("record-modal");
       if (el) {
@@ -1655,6 +1575,7 @@
     }
 
     function closeRecordModal() {
+      closeModalDrawOverlay();
       disposeModalPreview();
       disposeModalDraw();
       const el = document.getElementById("record-modal");
@@ -1676,7 +1597,11 @@
       editingRecordId = null;
       document.getElementById("record-modal-title").textContent = "저장";
       document.getElementById("modal-btn-primary").textContent = "저장 완료";
-      document.getElementById("modal-field-name").value = getDefaultSaveName();
+      const nameEl = document.getElementById("modal-field-name");
+      if (nameEl) {
+        nameEl.value = "";
+        nameEl.placeholder = getDefaultSaveName();
+      }
       document.getElementById("modal-field-plaster").value = String(calc.plasterRec);
       document.getElementById("modal-field-water").value =
         calc.waterRec % 1 === 0 ? String(calc.waterRec) : String(Number(calc.waterRec.toFixed(1)));
@@ -1700,7 +1625,11 @@
       editingRecordId = record.id;
       document.getElementById("record-modal-title").textContent = "기록 수정";
       document.getElementById("modal-btn-primary").textContent = "수정 완료";
-      document.getElementById("modal-field-name").value = record.name || "";
+      const nameElEdit = document.getElementById("modal-field-name");
+      if (nameElEdit) {
+        nameElEdit.value = record.name || "";
+        nameElEdit.placeholder = "기록 이름";
+      }
       document.getElementById("modal-field-plaster").value = String(record.plaster ?? "");
       document.getElementById("modal-field-water").value = String(record.water ?? "");
       document.getElementById("modal-field-memo").value = record.memo || "";
@@ -1714,8 +1643,15 @@
     function readModalFields() {
       const plaster = parseFloat(document.getElementById("modal-field-plaster").value);
       const water = parseFloat(document.getElementById("modal-field-water").value);
+      const nameTrim = (document.getElementById("modal-field-name").value || "").trim();
+      let nameOut = nameTrim;
+      if (!nameOut && modalMode === "create") {
+        nameOut = getDefaultSaveName();
+      } else if (!nameOut) {
+        nameOut = "이름 없음";
+      }
       return {
-        name: (document.getElementById("modal-field-name").value || "").trim() || "이름 없음",
+        name: nameOut,
         memo: (document.getElementById("modal-field-memo").value || "").trim(),
         plaster: Number.isFinite(plaster) ? plaster : 0,
         water: Number.isFinite(water) ? water : 0,
@@ -1946,9 +1882,14 @@
       const inpP = document.getElementById("plaster-input-plaster");
       const inpW = document.getElementById("plaster-input-water");
 
+      const heroP = document.getElementById("p-plaster-hero");
+      const heroW = document.getElementById("p-water-hero");
+
       if (!result) {
         document.getElementById("plaster-vol-display").textContent = "—";
         document.getElementById("plaster-vol-cc").textContent = "— cc";
+        if (heroP) heroP.innerHTML = "—";
+        if (heroW) heroW.innerHTML = "—";
         plasterCalcProgrammatic = true;
         if (inpP) inpP.value = "";
         if (inpW) inpW.value = "";
@@ -1973,6 +1914,13 @@
       document.getElementById("plaster-vol-display").textContent = formatNum(totalVolMm3, 1);
       document.getElementById("plaster-vol-cc").textContent      = formatNum(cc, 2) + " cc";
 
+      if (heroP) {
+        heroP.innerHTML = `${pRound.toLocaleString()}<span class="plaster-mix-hero-unit"> g</span>`;
+      }
+      if (heroW) {
+        heroW.innerHTML = `${wRound.toLocaleString()}<span class="plaster-mix-hero-unit"> mL</span>`;
+      }
+
       plasterCalcProgrammatic = true;
       if (inpP) inpP.value = String(pRound);
       if (inpW) inpW.value = String(wRound);
@@ -1990,7 +1938,7 @@
           const mw   = Math.round(vCc * WATER_K   * f);
           const mpR  = roundUp10(vCc * PLASTER_K * f);
           const mwR  = roundUp10(vCc * WATER_K   * f);
-          const name = m.name.replace(/\\.stl$/i, "");
+          const name = m.name.replace(/\.stl$/i, "");
           return `<div class="p-breakdown-row">
             <div class="p-breakdown-name" title="${name}">뷰어 ${i+1} · ${name}</div>
             <div class="p-breakdown-vals">
@@ -2020,20 +1968,43 @@
     document.getElementById("plaster-input-plaster")?.addEventListener("input", reversePlasterCalcFromPlasterGrams);
     document.getElementById("plaster-input-water")?.addEventListener("input", reversePlasterCalcFromWaterMl);
 
+    document.getElementById("plaster-mix-clear")?.addEventListener("click", () => {
+      plasterVolManual.value = "";
+      plasterCalcProgrammatic = true;
+      const pi = document.getElementById("plaster-input-plaster");
+      const pw = document.getElementById("plaster-input-water");
+      if (pi) pi.value = "";
+      if (pw) pw.value = "";
+      plasterCalcProgrammatic = false;
+      updatePlasterCalc();
+      plasterVolManual?.focus();
+    });
+
     document.getElementById("modal-thumb-tab-stl")?.addEventListener("click", () => {
       const b = document.getElementById("modal-thumb-tab-stl");
       if (!b || b.disabled) return;
-      setModalThumbTab("stl");
+      modalThumbMode = "stl";
+      updateThumbnailModeUi();
     });
-    document.getElementById("modal-thumb-tab-draw")?.addEventListener("click", () => setModalThumbTab("draw"));
-    document.getElementById("modal-thumb-refresh-stl")?.addEventListener("click", () => refreshModalThumbFinalPreview());
+    document.getElementById("modal-thumb-open-draw")?.addEventListener("click", () => openModalDrawOverlay());
+
+    document.getElementById("modal-draw-overlay")?.addEventListener("click", e => {
+      if (e.target?.id === "modal-draw-overlay") closeModalDrawOverlay();
+    });
+    document.getElementById("modal-draw-cancel")?.addEventListener("click", () => closeModalDrawOverlay());
+    document.getElementById("modal-draw-close-x")?.addEventListener("click", () => closeModalDrawOverlay());
+    document.getElementById("modal-draw-apply")?.addEventListener("click", () => {
+      modalThumbMode = "draw";
+      closeModalDrawOverlay();
+      updateThumbnailModeUi();
+    });
+
     document.getElementById("modal-draw-clear")?.addEventListener("click", () => {
       const canvas = document.getElementById("modal-draw-canvas");
       const ctx = canvas?.getContext("2d");
       if (!canvas || !ctx) return;
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      refreshModalThumbFinalPreview();
     });
 
     btnClearAll?.addEventListener("click", () => clearAllSlotsMeshes());
@@ -2052,6 +2023,12 @@
       if (e.key !== "Escape") return;
       const confirmDlg = document.getElementById("record-commit-confirm");
       if (confirmDlg?.open) return;
+      const drawOv = document.getElementById("modal-draw-overlay");
+      if (drawOv && !drawOv.hidden) {
+        closeModalDrawOverlay();
+        e.preventDefault();
+        return;
+      }
       const modal = document.getElementById("record-modal");
       if (modal && !modal.hidden) closeRecordModal();
     });
@@ -2086,7 +2063,6 @@
     });
 
     setupModalRatioSync();
-    setupStandaloneRatioCalc();
     setupMainAddDrop();
     document.getElementById("records-search")?.addEventListener("input", () => void renderRecordsList({ forceFetch: false }));
     document.getElementById("records-sort")?.addEventListener("change", () => void renderRecordsList({ forceFetch: false }));
