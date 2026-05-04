@@ -1,3 +1,8 @@
+/**
+ * 소스(index.html + styles.css)를 인라인한 worker.js를 생성합니다.
+ * 배포 전에 실행: node _build_records_worker.mjs
+ * 생성된 worker.js는 .gitignore 처리됩니다.
+ */
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";

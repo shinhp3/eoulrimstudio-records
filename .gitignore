@@ -8,3 +8,6 @@ Thumbs.db
 
 # Node (if used later)
 node_modules/
+
+# Cloudflare Worker 번들 (소스: index.html + styles.css → node _build_records_worker.mjs)
+worker.js
