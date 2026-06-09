@@ -192,12 +192,28 @@
         <span class="modal-preview-section-label">썸네일</span>
         <div id="modal-thumb-mode-row" class="modal-thumb-mode-row" role="group" aria-label="썸네일 만들기">
           <button type="button" id="modal-thumb-tab-stl" class="modal-thumb-mode-btn active" aria-pressed="true">STL 화면 캡처</button>
-          <button type="button" id="modal-thumb-open-draw" class="modal-thumb-open-draw-btn" aria-pressed="false">그림 그리기</button>
+          <button type="button" id="modal-thumb-tab-image" class="modal-thumb-mode-btn" aria-pressed="false">이미지 넣기</button>
         </div>
         <div id="modal-thumb-pane-stl" class="modal-thumb-pane-stl">
           <div id="modal-thumb-stl-frame" class="modal-thumb-stl-frame">
             <div id="modal-preview-canvas-host" class="modal-preview-canvas-host" aria-label="저장용 3D 미리보기"></div>
             <p class="modal-thumb-frame-caption">실제 썸네일 크기 <strong>200×200px</strong></p>
+          </div>
+        </div>
+        <div id="modal-thumb-pane-image" class="modal-thumb-pane-image" hidden>
+          <div class="modal-thumb-image-frame">
+            <div class="modal-thumb-image-preview-wrap">
+              <img id="modal-thumb-image-preview" class="modal-thumb-image-preview" alt="업로드한 썸네일 미리보기" width="200" height="200" hidden />
+              <div id="modal-thumb-image-empty" class="modal-thumb-image-empty">이미지를 선택해 주세요</div>
+            </div>
+            <p class="modal-thumb-frame-caption">실제 썸네일 크기 <strong>200×200px</strong></p>
+            <div class="modal-thumb-image-actions">
+              <label class="modal-thumb-image-pick">
+                이미지 선택
+                <input type="file" id="modal-thumb-image-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+              </label>
+              <button type="button" id="modal-thumb-image-clear" class="modal-thumb-image-clear" hidden>제거</button>
+            </div>
           </div>
         </div>
       </div>
@@ -234,30 +250,6 @@
           <textarea id="modal-field-memo" class="modal-textarea" rows="3" maxlength="500"></textarea>
         </label>
       </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="modal-draw-overlay" class="modal-draw-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-draw-title" hidden>
-    <div class="modal-draw-overlay-panel">
-      <div class="modal-draw-overlay-head">
-        <h3 id="modal-draw-title" class="modal-draw-overlay-title">썸네일 그림판</h3>
-        <button type="button" id="modal-draw-close-x" class="modal-draw-close-x" aria-label="닫기">×</button>
-      </div>
-      <div class="modal-draw-toolbar">
-        <button type="button" id="modal-draw-clear">캔버스 지우기</button>
-        <label class="modal-draw-color-label">색<input type="color" id="modal-draw-color" value="#1e293b" /></label>
-      </div>
-      <div class="modal-thumb-draw-frame">
-        <div class="modal-draw-canvas-wrap modal-draw-canvas-wrap--overlay">
-          <canvas id="modal-draw-canvas" width="200" height="200" aria-label="썸네일 손그림"></canvas>
-        </div>
-        <p class="modal-thumb-frame-caption">실제 썸네일 크기 <strong>200×200px</strong></p>
-      </div>
-      <p class="modal-draw-hint">「이 그림으로 적용」 후 저장하면 썸네일로 쓰입니다.</p>
-      <div class="modal-draw-overlay-actions">
-        <button type="button" id="modal-draw-cancel" class="modal-btn modal-btn-secondary modal-btn-header">닫기</button>
-        <button type="button" id="modal-draw-apply" class="modal-btn modal-btn-primary modal-btn-header">이 그림으로 적용</button>
       </div>
     </div>
   </div>
@@ -681,12 +673,14 @@
     let viewerSlots = [];
 
     function collectModelsWithGeometry() {
-      return viewerSlots.filter(s => s.geometry && s.mesh && s.arrayBuffer).map(s => ({
-        name: s.fileName,
-        geometry: s.geometry,
-        mesh: s.mesh,
-        arrayBuffer: s.arrayBuffer,
-      }));
+      return viewerSlots
+        .filter(s => s.mesh?.geometry)
+        .map(s => ({
+          name: s.fileName || "",
+          geometry: s.mesh.geometry,
+          mesh: s.mesh,
+          arrayBuffer: s.arrayBuffer,
+        }));
     }
 
     function resizeSlotRenderer(slot) {
@@ -725,11 +719,11 @@
     }
 
     let modalPreview = null;
-    /** 저장 썸네일 PNG 한 변 픽셀 (캡처·그림판과 동일) */
+    /** 저장 썸네일 PNG 한 변 픽셀 (캡처·이미지 업로드와 동일) */
     const THUMB_SAVE_PX = 200;
-    /** @type {"stl" | "draw"} */
+    /** @type {"stl" | "image"} */
     let modalThumbMode = "stl";
-    let modalDrawAbort = null;
+    let modalUploadedImageDataUrl = null;
 
     function capturePreviewAsDataURL(preview, size = THUMB_SAVE_PX) {
       if (!preview?.renderer || !preview?.camera || !preview?.scene || !preview?.mesh) {
@@ -889,132 +883,138 @@
       modalPreview = null;
     }
 
-    function disposeModalDraw() {
-      if (modalDrawAbort) {
-        try {
-          modalDrawAbort.abort();
-        } catch (_) { /* noop */ }
-        modalDrawAbort = null;
+    function resetModalUploadedImage() {
+      modalUploadedImageDataUrl = null;
+      const img = document.getElementById("modal-thumb-image-preview");
+      const empty = document.getElementById("modal-thumb-image-empty");
+      const clearBtn = document.getElementById("modal-thumb-image-clear");
+      const input = document.getElementById("modal-thumb-image-input");
+      if (img) {
+        img.hidden = true;
+        img.removeAttribute("src");
       }
-    }
-
-    function primeModalDrawCanvasBlank() {
-      const canvas = document.getElementById("modal-draw-canvas");
-      const ctx = canvas?.getContext("2d");
-      if (!canvas || !ctx) return;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    function closeModalDrawOverlay() {
-      const ov = document.getElementById("modal-draw-overlay");
-      if (ov) ov.hidden = true;
-    }
-
-    function openModalDrawOverlay() {
-      const ov = document.getElementById("modal-draw-overlay");
-      if (!ov) return;
-      if (!modalDrawAbort) {
-        attachModalDrawInteraction();
+      if (empty) {
+        empty.hidden = false;
+        empty.textContent = "이미지를 선택해 주세요";
       }
-      ov.hidden = false;
+      if (clearBtn) clearBtn.hidden = true;
+      if (input) input.value = "";
+    }
+
+    function showModalUploadedImagePreview(dataUrl) {
+      modalUploadedImageDataUrl = dataUrl;
+      const img = document.getElementById("modal-thumb-image-preview");
+      const empty = document.getElementById("modal-thumb-image-empty");
+      const clearBtn = document.getElementById("modal-thumb-image-clear");
+      if (img) {
+        img.src = dataUrl;
+        img.hidden = false;
+      }
+      if (empty) empty.hidden = true;
+      if (clearBtn) clearBtn.hidden = false;
+    }
+
+    function loadImageFileAsThumbDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const src = reader.result;
+          if (typeof src !== "string") {
+            reject(new Error("read failed"));
+            return;
+          }
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = THUMB_SAVE_PX;
+            canvas.height = THUMB_SAVE_PX;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              reject(new Error("no ctx"));
+              return;
+            }
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, THUMB_SAVE_PX, THUMB_SAVE_PX);
+            const scale = Math.max(THUMB_SAVE_PX / img.width, THUMB_SAVE_PX / img.height);
+            const w = img.width * scale;
+            const h = img.height * scale;
+            ctx.drawImage(img, (THUMB_SAVE_PX - w) / 2, (THUMB_SAVE_PX - h) / 2, w, h);
+            resolve(canvas.toDataURL("image/png"));
+          };
+          img.onerror = () => reject(new Error("img load failed"));
+          img.src = src;
+        };
+        reader.onerror = () => reject(new Error("read failed"));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function processModalImageFile(file) {
+      if (!file || !file.type.startsWith("image/")) {
+        alert("이미지 파일만 선택할 수 있습니다.");
+        return;
+      }
+      const maxBytes = 5 * 1024 * 1024;
+      if (file.size > maxBytes) {
+        alert("이미지 크기는 5MB 이하여야 합니다.");
+        return;
+      }
+      try {
+        const dataUrl = await loadImageFileAsThumbDataUrl(file);
+        showModalUploadedImagePreview(dataUrl);
+        modalThumbMode = "image";
+        updateThumbnailModeUi();
+      } catch (err) {
+        console.error(err);
+        alert("이미지를 불러오지 못했습니다.");
+      }
     }
 
     function getModalThumbnailDataUrlForCommit() {
+      if (modalThumbMode === "image" && modalUploadedImageDataUrl) {
+        return modalUploadedImageDataUrl;
+      }
       if (modalThumbMode === "stl" && modalPreview?.mesh) {
         return capturePreviewAsDataURL(modalPreview, THUMB_SAVE_PX);
       }
-      const canvas = document.getElementById("modal-draw-canvas");
-      if (canvas) return canvas.toDataURL("image/png");
       return makePlaceholderThumbnail();
     }
 
     function updateThumbnailModeUi() {
-      const hasSlot = !!viewerSlots.find(s => s.mesh && s.geometry);
+      const hasSlot = !!viewerSlots.find(s => s.mesh?.geometry);
       const tabStl = document.getElementById("modal-thumb-tab-stl");
-      const btnDraw = document.getElementById("modal-thumb-open-draw");
+      const tabImage = document.getElementById("modal-thumb-tab-image");
+      const paneStl = document.getElementById("modal-thumb-pane-stl");
+      const paneImage = document.getElementById("modal-thumb-pane-image");
       if (tabStl) {
         tabStl.disabled = !hasSlot;
         tabStl.classList.toggle("active", modalThumbMode === "stl");
         tabStl.setAttribute("aria-pressed", modalThumbMode === "stl" ? "true" : "false");
       }
-      if (btnDraw) {
-        btnDraw.classList.toggle("active", modalThumbMode === "draw");
-        btnDraw.setAttribute("aria-pressed", modalThumbMode === "draw" ? "true" : "false");
+      if (tabImage) {
+        tabImage.classList.toggle("active", modalThumbMode === "image");
+        tabImage.setAttribute("aria-pressed", modalThumbMode === "image" ? "true" : "false");
       }
-    }
-
-    function attachModalDrawInteraction() {
-      disposeModalDraw();
-      const canvas = document.getElementById("modal-draw-canvas");
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      modalDrawAbort = new AbortController();
-      const sig = { signal: modalDrawAbort.signal };
-      const colorInput = document.getElementById("modal-draw-color");
-
-      let drawing = false;
-
-      function canvasCoords(ev) {
-        const r = canvas.getBoundingClientRect();
-        const x = ((ev.clientX - r.left) / Math.max(r.width, 1)) * canvas.width;
-        const y = ((ev.clientY - r.top) / Math.max(r.height, 1)) * canvas.height;
-        return { x, y };
+      if (paneStl) paneStl.hidden = modalThumbMode !== "stl";
+      if (paneImage) paneImage.hidden = modalThumbMode !== "image";
+      if (!hasSlot && modalThumbMode === "stl") {
+        modalThumbMode = "image";
+        if (tabStl) {
+          tabStl.classList.remove("active");
+          tabStl.setAttribute("aria-pressed", "false");
+        }
+        if (tabImage) {
+          tabImage.classList.add("active");
+          tabImage.setAttribute("aria-pressed", "true");
+        }
+        if (paneStl) paneStl.hidden = true;
+        if (paneImage) paneImage.hidden = false;
       }
-
-      function lineWidthForPointer(ev) {
-        return ev.pointerType === "touch" ? 4 : 3;
-      }
-
-      canvas.addEventListener(
-        "pointerdown",
-        ev => {
-          if (ev.button !== 0 && ev.pointerType === "mouse") return;
-          drawing = true;
-          try {
-            canvas.setPointerCapture(ev.pointerId);
-          } catch (_) { /* noop */ }
-          const { x, y } = canvasCoords(ev);
-          ctx.strokeStyle = colorInput?.value || "#1e293b";
-          ctx.lineWidth = lineWidthForPointer(ev);
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-        },
-        sig
-      );
-
-      canvas.addEventListener(
-        "pointermove",
-        ev => {
-          if (!drawing) return;
-          const { x, y } = canvasCoords(ev);
-          ctx.lineTo(x, y);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-        },
-        sig
-      );
-
-      function endStroke() {
-        if (!drawing) return;
-        drawing = false;
-      }
-
-      canvas.addEventListener("pointerup", endStroke, sig);
-      canvas.addEventListener("pointercancel", endStroke, sig);
-      canvas.addEventListener("lostpointercapture", endStroke, sig);
     }
 
     function prepareSaveModalThumbnailUi() {
-      closeModalDrawOverlay();
-      disposeModalDraw();
-      primeModalDrawCanvasBlank();
-      modalThumbMode = "stl";
+      resetModalUploadedImage();
+      modalThumbMode = viewerSlots.find(s => s.mesh?.geometry) ? "stl" : "image";
       updateThumbnailModeUi();
     }
 
@@ -1028,7 +1028,7 @@
     function setupModalPreviewForSave() {
       disposeModalPreview();
       const host = document.getElementById("modal-preview-canvas-host");
-      const slot = viewerSlots.find(s => s.mesh && s.geometry);
+      const slot = viewerSlots.find(s => s.mesh?.geometry);
       if (!host) return;
 
       if (!slot) {
@@ -1257,8 +1257,13 @@
         alert("STL 파일(.stl)만 지원합니다.");
         return;
       }
-      const arrayBuffer = await file.arrayBuffer();
-      await loadSTLIntoSlotFromArrayBuffer(slot, arrayBuffer, file.name);
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        await loadSTLIntoSlotFromArrayBuffer(slot, arrayBuffer, file.name);
+      } catch (err) {
+        console.error(err);
+        alert("STL 파일을 불러오지 못했습니다.");
+      }
     }
 
     function setupSlotClickOpenFile(slot) {
@@ -1364,9 +1369,9 @@
       initThreeForSlot(slot);
       setupSlotClickOpenFile(slot);
 
-      slot.fileInput.addEventListener("change", () => {
+      slot.fileInput.addEventListener("change", async () => {
         const f = slot.fileInput.files?.[0];
-        if (f) loadSTLIntoSlot(slot, f);
+        if (f) await loadSTLIntoSlot(slot, f);
         slot.fileInput.value = "";
       });
       slot.btnReset.addEventListener("click", () => {
@@ -1412,6 +1417,7 @@
       const pw = document.getElementById("plaster-input-water");
       const title =
         "STL이 로드된 동안에는 메시 체적으로 계산됩니다. 역산 입력은 STL 없이만 가능합니다.";
+      const volTitle = "STL이 로드된 동안에는 메시 체적으로 계산됩니다.";
       if (pi) {
         pi.disabled = disabled;
         pi.title = disabled ? title : "";
@@ -1419,6 +1425,10 @@
       if (pw) {
         pw.disabled = disabled;
         pw.title = disabled ? title : "";
+      }
+      if (plasterVolManual) {
+        plasterVolManual.disabled = disabled;
+        plasterVolManual.title = disabled ? volTitle : "";
       }
     }
 
@@ -1575,9 +1585,8 @@
     }
 
     function closeRecordModal() {
-      closeModalDrawOverlay();
       disposeModalPreview();
-      disposeModalDraw();
+      resetModalUploadedImage();
       const el = document.getElementById("record-modal");
       if (el) {
         el.hidden = true;
@@ -1986,25 +1995,18 @@
       modalThumbMode = "stl";
       updateThumbnailModeUi();
     });
-    document.getElementById("modal-thumb-open-draw")?.addEventListener("click", () => openModalDrawOverlay());
-
-    document.getElementById("modal-draw-overlay")?.addEventListener("click", e => {
-      if (e.target?.id === "modal-draw-overlay") closeModalDrawOverlay();
-    });
-    document.getElementById("modal-draw-cancel")?.addEventListener("click", () => closeModalDrawOverlay());
-    document.getElementById("modal-draw-close-x")?.addEventListener("click", () => closeModalDrawOverlay());
-    document.getElementById("modal-draw-apply")?.addEventListener("click", () => {
-      modalThumbMode = "draw";
-      closeModalDrawOverlay();
+    document.getElementById("modal-thumb-tab-image")?.addEventListener("click", () => {
+      modalThumbMode = "image";
       updateThumbnailModeUi();
     });
-
-    document.getElementById("modal-draw-clear")?.addEventListener("click", () => {
-      const canvas = document.getElementById("modal-draw-canvas");
-      const ctx = canvas?.getContext("2d");
-      if (!canvas || !ctx) return;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    document.getElementById("modal-thumb-image-input")?.addEventListener("change", async () => {
+      const input = document.getElementById("modal-thumb-image-input");
+      const f = input?.files?.[0];
+      if (f) await processModalImageFile(f);
+      if (input) input.value = "";
+    });
+    document.getElementById("modal-thumb-image-clear")?.addEventListener("click", () => {
+      resetModalUploadedImage();
     });
 
     btnClearAll?.addEventListener("click", () => clearAllSlotsMeshes());
@@ -2023,12 +2025,6 @@
       if (e.key !== "Escape") return;
       const confirmDlg = document.getElementById("record-commit-confirm");
       if (confirmDlg?.open) return;
-      const drawOv = document.getElementById("modal-draw-overlay");
-      if (drawOv && !drawOv.hidden) {
-        closeModalDrawOverlay();
-        e.preventDefault();
-        return;
-      }
       const modal = document.getElementById("record-modal");
       if (modal && !modal.hidden) closeRecordModal();
     });
@@ -2148,6 +2144,7 @@
       }
     }
 
+    updatePlasterCalc();
     initViewerFromQuery();
   </script>
 </body>
