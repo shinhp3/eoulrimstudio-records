@@ -202,17 +202,24 @@
         </div>
         <div id="modal-thumb-pane-image" class="modal-thumb-pane-image" hidden>
           <div class="modal-thumb-image-frame">
-            <div class="modal-thumb-image-preview-wrap">
-              <img id="modal-thumb-image-preview" class="modal-thumb-image-preview" alt="업로드한 썸네일 미리보기" width="200" height="200" hidden />
-              <div id="modal-thumb-image-empty" class="modal-thumb-image-empty">이미지를 선택해 주세요</div>
+            <div
+              id="modal-thumb-image-drop"
+              class="modal-thumb-image-drop"
+              tabindex="0"
+              role="button"
+              aria-label="썸네일 이미지 선택, 붙여넣기 또는 드래그"
+            >
+              <img id="modal-thumb-image-preview" class="modal-thumb-image-preview" alt="업로드한 썸네일 미리보기" hidden />
+              <div id="modal-thumb-image-empty" class="modal-thumb-image-empty">
+                <svg class="modal-thumb-image-empty-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <span class="modal-thumb-image-empty-title">이미지를 넣어 주세요</span>
+                <span class="modal-thumb-image-empty-hint">클릭 · 붙여넣기 · 드래그</span>
+              </div>
             </div>
+            <input type="file" id="modal-thumb-image-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
             <p class="modal-thumb-frame-caption">실제 썸네일 크기 <strong>200×200px</strong></p>
             <div class="modal-thumb-image-actions">
-              <label class="modal-thumb-image-pick">
-                이미지 선택
-                <input type="file" id="modal-thumb-image-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
-              </label>
-              <button type="button" id="modal-thumb-image-clear" class="modal-thumb-image-clear" hidden>제거</button>
+              <button type="button" id="modal-thumb-image-clear" class="modal-thumb-image-clear" hidden>이미지 제거</button>
             </div>
           </div>
         </div>
@@ -883,6 +890,11 @@
       modalPreview = null;
     }
 
+    function syncModalImageDropState(hasImage) {
+      const drop = document.getElementById("modal-thumb-image-drop");
+      if (drop) drop.classList.toggle("modal-thumb-image-drop--filled", !!hasImage);
+    }
+
     function resetModalUploadedImage() {
       modalUploadedImageDataUrl = null;
       const img = document.getElementById("modal-thumb-image-preview");
@@ -893,12 +905,10 @@
         img.hidden = true;
         img.removeAttribute("src");
       }
-      if (empty) {
-        empty.hidden = false;
-        empty.textContent = "이미지를 선택해 주세요";
-      }
+      if (empty) empty.hidden = false;
       if (clearBtn) clearBtn.hidden = true;
       if (input) input.value = "";
+      syncModalImageDropState(false);
     }
 
     function showModalUploadedImagePreview(dataUrl) {
@@ -912,9 +922,10 @@
       }
       if (empty) empty.hidden = true;
       if (clearBtn) clearBtn.hidden = false;
+      syncModalImageDropState(true);
     }
 
-    function loadImageFileAsThumbDataUrl(file) {
+    function loadImageBlobAsThumbDataUrl(blob) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
@@ -945,13 +956,43 @@
           img.src = src;
         };
         reader.onerror = () => reject(new Error("read failed"));
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(blob);
       });
     }
 
+    function clipboardItemToImageBlob(item) {
+      if (!item || item.kind !== "file") return null;
+      const blob = item.getAsFile();
+      if (!blob) return null;
+      if (blob.type.startsWith("image/")) return blob;
+      if (item.type?.startsWith("image/")) {
+        return new File([blob], "pasted-image.png", { type: item.type });
+      }
+      return null;
+    }
+
+    function extractImageFromDataTransfer(dt) {
+      if (!dt) return null;
+      const files = dt.files;
+      if (files?.length) {
+        for (const f of files) {
+          if (f.type.startsWith("image/")) return f;
+        }
+      }
+      if (dt.items?.length) {
+        for (const item of dt.items) {
+          const blob = clipboardItemToImageBlob(item);
+          if (blob) return blob;
+        }
+      }
+      return null;
+    }
+
     async function processModalImageFile(file) {
-      if (!file || !file.type.startsWith("image/")) {
-        alert("이미지 파일만 선택할 수 있습니다.");
+      if (!file) return;
+      const type = file.type || "";
+      if (type && !type.startsWith("image/")) {
+        alert("이미지 파일만 넣을 수 있습니다.");
         return;
       }
       const maxBytes = 5 * 1024 * 1024;
@@ -960,7 +1001,7 @@
         return;
       }
       try {
-        const dataUrl = await loadImageFileAsThumbDataUrl(file);
+        const dataUrl = await loadImageBlobAsThumbDataUrl(file);
         showModalUploadedImagePreview(dataUrl);
         modalThumbMode = "image";
         updateThumbnailModeUi();
@@ -968,6 +1009,59 @@
         console.error(err);
         alert("이미지를 불러오지 못했습니다.");
       }
+    }
+
+    function openModalImageFilePicker() {
+      if (modalUploadedImageDataUrl) return;
+      document.getElementById("modal-thumb-image-input")?.click();
+    }
+
+    async function handleModalImagePaste(e) {
+      const modal = document.getElementById("record-modal");
+      if (!modal || modal.hidden || modalThumbMode !== "image") return;
+      const saveWrap = document.getElementById("modal-save-preview-wrap");
+      if (saveWrap?.hidden) return;
+      const image = extractImageFromDataTransfer(e.clipboardData);
+      if (!image) return;
+      e.preventDefault();
+      await processModalImageFile(image);
+    }
+
+    function setupModalImageDropZone() {
+      const drop = document.getElementById("modal-thumb-image-drop");
+      const input = document.getElementById("modal-thumb-image-input");
+      const modal = document.getElementById("record-modal");
+      if (!drop || !input) return;
+
+      drop.addEventListener("click", () => openModalImageFilePicker());
+      drop.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openModalImageFilePicker();
+        }
+      });
+
+      drop.addEventListener("dragenter", e => {
+        e.preventDefault();
+        if (!modalUploadedImageDataUrl) drop.classList.add("modal-thumb-image-drop--dragover");
+      });
+      drop.addEventListener("dragover", e => {
+        e.preventDefault();
+        if (!modalUploadedImageDataUrl) drop.classList.add("modal-thumb-image-drop--dragover");
+      });
+      drop.addEventListener("dragleave", e => {
+        if (!e.relatedTarget || !drop.contains(e.relatedTarget)) {
+          drop.classList.remove("modal-thumb-image-drop--dragover");
+        }
+      });
+      drop.addEventListener("drop", async e => {
+        e.preventDefault();
+        drop.classList.remove("modal-thumb-image-drop--dragover");
+        const image = extractImageFromDataTransfer(e.dataTransfer);
+        if (image) await processModalImageFile(image);
+      });
+
+      modal?.addEventListener("paste", e => void handleModalImagePaste(e));
     }
 
     function getModalThumbnailDataUrlForCommit() {
@@ -997,6 +1091,10 @@
       }
       if (paneStl) paneStl.hidden = modalThumbMode !== "stl";
       if (paneImage) paneImage.hidden = modalThumbMode !== "image";
+      const imageDrop = document.getElementById("modal-thumb-image-drop");
+      if (imageDrop && modalThumbMode === "image" && !modalUploadedImageDataUrl) {
+        requestAnimationFrame(() => imageDrop.focus());
+      }
       if (!hasSlot && modalThumbMode === "stl") {
         modalThumbMode = "image";
         if (tabStl) {
@@ -1042,8 +1140,8 @@
       function readSquareSide() {
         const cw = host.clientWidth;
         const ch = host.clientHeight;
-        const m = Math.min(cw, ch);
-        return Math.max(m > 0 ? m : THUMB_SAVE_PX, 160);
+        if (cw < 2 || ch < 2) return THUMB_SAVE_PX;
+        return Math.min(Math.max(Math.min(cw, ch), 160), THUMB_SAVE_PX);
       }
 
       const side = readSquareSide();
@@ -2007,7 +2105,10 @@
     });
     document.getElementById("modal-thumb-image-clear")?.addEventListener("click", () => {
       resetModalUploadedImage();
+      document.getElementById("modal-thumb-image-drop")?.focus();
     });
+
+    setupModalImageDropZone();
 
     btnClearAll?.addEventListener("click", () => clearAllSlotsMeshes());
 
